@@ -71,5 +71,11 @@ Saved/*
 Intermediate/*
 Plugins/**/Intermediate/*
 
+# Compiled source files for the engine to use
+Content/**/__ExternalActors__/**
+
+# Not required for a simple game
+Content/**/__ExternalObjects__/**
+
 # Cache files for the editor to use
 DerivedDataCache/*
