@@ -8,7 +8,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
-#include "GameFramework/CharacterMovementComponent.h"
+#include "VPSource/Components/VPHealthComponent.h"
 
 AVPCharacter::AVPCharacter()
 {
@@ -47,6 +47,8 @@ AVPCharacter::AVPCharacter()
 	CameraBoom->bUsePawnControlRotation = true;   // arm rotates with controller
 	bUseControllerRotationYaw = false;             // character doesn't snap-rotate with camera
 	GetCharacterMovement()->bOrientRotationToMovement = true; // character faces movement direction
+
+	HealthComponent = CreateDefaultSubobject<UVPHealthComponent>(TEXT("HealthComponent"));
 }
 
 void AVPCharacter::BeginPlay() { Super::BeginPlay(); }
@@ -170,4 +172,12 @@ void AVPCharacter::UpdateCoverPeek(float DeltaTime)
 		DeltaTime,
 		6.f
 	);
+}
+
+float AVPCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
+	AController* EventInstigator, AActor* DamageCauser)
+{
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	HealthComponent->HandleTakeDamage(DamageAmount);
+	return DamageAmount;
 }

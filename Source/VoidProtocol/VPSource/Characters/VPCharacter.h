@@ -7,6 +7,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
+class UVPHealthComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -21,6 +22,10 @@ class VOIDPROTOCOL_API AVPCharacter : public ACharacter
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
+
+	/** Follow camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UVPHealthComponent* HealthComponent;
 
 protected:
 
@@ -69,6 +74,9 @@ public:
 
 public:
     virtual void Tick(float DeltaTime) override;
+
+	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
+		AController* EventInstigator, AActor* DamageCauser) override;
 
 	/** Handles move inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category = "Input")
