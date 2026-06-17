@@ -18,7 +18,12 @@ public class VoidProtocol : ModuleRules
 			"StateTreeModule",
 			"GameplayStateTreeModule",
 			"UMG",
-			"Slate"
+			"Slate",
+            "OnlineSubsystem",     
+			"OnlineSubsystemUtils",
+			"OnlineSubsystemNull",
+            "Sockets", 
+			"Networking"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

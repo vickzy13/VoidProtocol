@@ -9,26 +9,39 @@ UCLASS()
 class VOIDPROTOCOL_API AVPGameMode : public AGameModeBase
 {
     GENERATED_BODY()
+
+    //=========================================================
+    // PRIVATE — player tracking, not needed outside GameMode
+    //=========================================================
 private:
     int32 PlayerCount = 0;
-    TMap<APlayerController*, EVPRole> PlayerRoles;
+    TMap<AController*, EVPRole> PlayerRoles;
 
+    //=========================================================
+    // PROTECTED — configurable in BP_VPGameMode details panel
+    //=========================================================
 protected:
-    UPROPERTY(EditDefaultsOnly, Category = "Roles")
+    UPROPERTY(EditDefaultsOnly, Category="Roles")
     TSubclassOf<APawn> InfiltratorClass;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Roles")
+    UPROPERTY(EditDefaultsOnly, Category="Roles")
     TSubclassOf<APawn> HackerClass;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Respawn")
+    UPROPERTY(EditDefaultsOnly, Category="Respawn")
     float RespawnDelay = 5.f;
 
+    //=========================================================
+    // PUBLIC — engine overrides + called by other systems
+    //=========================================================
 public:
     AVPGameMode();
 
-    // Called automatically by engine when a player joins
+    // Engine calls this when a player joins
     virtual void PostLogin(APlayerController* NewPlayer) override;
 
-    // Called by UVPHealthComponent::OnDeath delegate
+    // Called by UVPHealthComponent OnDeath delegate (server only)
     void RequestRespawn(AController* DeadController);
+
+    virtual AActor* FindPlayerStart_Implementation(
+        AController* Player, const FString& IncomingName = TEXT("")) override;
 };

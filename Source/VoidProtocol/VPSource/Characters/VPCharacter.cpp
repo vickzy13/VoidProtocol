@@ -87,13 +87,56 @@ void AVPCharacter::GetLifetimeReplicatedProps(
 void AVPCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	AddMappingContexts(Cast<APlayerController>(NewController));
+
+	UE_LOG(LogTemp, Warning, TEXT("PossessedBy: %s | Controller: %s | IsLocal: %s"),
+		*GetName(),
+		*NewController->GetName(),
+		Cast<APlayerController>(NewController) &&
+		Cast<APlayerController>(NewController)->IsLocalController()
+		? TEXT("YES") : TEXT("NO"));
+
+	if (APlayerController* PC = Cast<APlayerController>(NewController))
+	{
+		if (PC->IsLocalController())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Adding mapping contexts for: %s"), *GetName());
+			AddMappingContexts(PC);
+			PC->SetShowMouseCursor(false);
+			PC->SetInputMode(FInputModeGameOnly());
+		}
+	}
 }
 
 void AVPCharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
-	AddMappingContexts(Cast<APlayerController>(GetController()));
+
+	UE_LOG(LogTemp, Warning, TEXT("OnRep_Controller fired on: %s | Controller: %s"),
+		*GetName(),
+		GetController() ? *GetController()->GetName() : TEXT("NULL"));
+
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (PC->IsLocalController())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("OnRep_Controller: Setting up input for local player"));
+
+			// Force input component setup
+			if (!InputComponent)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("OnRep_Controller: Creating input component"));
+				InputComponent = NewObject<UEnhancedInputComponent>(this,
+					UEnhancedInputComponent::StaticClass());
+				InputComponent->RegisterComponent();
+				SetupPlayerInputComponent(InputComponent);
+				PC->PushInputComponent(InputComponent);
+			}
+
+			AddMappingContexts(PC);
+			PC->SetShowMouseCursor(false);
+			PC->SetInputMode(FInputModeGameOnly());
+		}
+	}
 }
 
 void AVPCharacter::OnRep_Role()
@@ -195,18 +238,40 @@ void AVPCharacter::DoJumpEnd()
 
 void AVPCharacter::AddMappingContexts(APlayerController* PC)
 {
-	if (!PC) return;
+	if (!PC)
+	{
+		UE_LOG(LogTemp, Error, TEXT("AddMappingContexts: PC is null"));
+		return;
+	}
 
 	UEnhancedInputLocalPlayerSubsystem* Subsystem =
 		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
 
-	if (!Subsystem) return;
+	if (!Subsystem)
+	{
+		UE_LOG(LogTemp, Error, TEXT("AddMappingContexts: Subsystem is null"));
+		return;
+	}
 
-	if (DefaultMappingContext)
+	if (!DefaultMappingContext)
+	{
+		UE_LOG(LogTemp, Error, TEXT("AddMappingContexts: DefaultMappingContext is null"));
+	}
+	else
+	{
 		Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		UE_LOG(LogTemp, Warning, TEXT("AddMappingContexts: DefaultMappingContext added"));
+	}
 
-	if (MouseLookMappingContext)
-		Subsystem->AddMappingContext(MouseLookMappingContext, 1); // priority 1 — higher than default
+	if (!MouseLookMappingContext)
+	{
+		UE_LOG(LogTemp, Error, TEXT("AddMappingContexts: MouseLookMappingContext is null"));
+	}
+	else
+	{
+		Subsystem->AddMappingContext(MouseLookMappingContext, 1);
+		UE_LOG(LogTemp, Warning, TEXT("AddMappingContexts: MouseLookMappingContext added"));
+	}
 }
 
 void AVPCharacter::AimStart() { bIsAiming = true; }

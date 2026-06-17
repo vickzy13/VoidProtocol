@@ -1,17 +1,18 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
+// VPGameMode.cpp
 #include "VPSource/VPGameMode.h"
+#include "VPSource/VPGameInstance.h"
 #include "VPSource/Characters/VPCharacter.h"
 #include "VPSource/Characters/VPHacker.h"
 #include "VPSource/Characters/VPInfiltrator.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
 #include "EngineUtils.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerStart.h"
 
 AVPGameMode::AVPGameMode()
 {
-    // Default pawn set to none — we spawn manually in PostLogin
+    // We spawn pawns manually in PostLogin — no default pawn
     DefaultPawnClass = nullptr;
 }
 
@@ -19,15 +20,16 @@ void AVPGameMode::PostLogin(APlayerController* NewPlayer)
 {
     Super::PostLogin(NewPlayer);
 
-    // Guard — skip if already registered
+    // Guard — don't process same player twice
     if (PlayerRoles.Contains(NewPlayer))
     {
-        UE_LOG(LogTemp, Warning, TEXT("PostLogin called again for existing player — skipping"));
+        UE_LOG(LogTemp, Warning, TEXT("PostLogin: Player already registered, skipping"));
         return;
     }
 
     PlayerCount++;
 
+    // Player 1 = Infiltrator, Player 2 = Hacker
     EVPRole AssignedRole = (PlayerCount == 1)
         ? EVPRole::Infiltrator
         : EVPRole::Hacker;
@@ -38,20 +40,27 @@ void AVPGameMode::PostLogin(APlayerController* NewPlayer)
 
     if (!PawnClass)
     {
-        UE_LOG(LogTemp, Error, TEXT("VPGameMode: PawnClass not assigned!"));
+        UE_LOG(LogTemp, Error, TEXT("PostLogin: PawnClass not set in BP_VPGameMode for role %s"),
+            *UEnum::GetValueAsString(AssignedRole));
         return;
     }
 
+    // Destroy any auto-spawned default pawn
     if (APawn* OldPawn = NewPlayer->GetPawn())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("PostLogin: Destroying old pawn %s"), *OldPawn->GetName());
         OldPawn->Destroy();
+    }
 
+    // Find spawn point
     AActor* StartSpot = FindPlayerStart(NewPlayer);
     if (!StartSpot)
     {
-        UE_LOG(LogTemp, Error, TEXT("VPGameMode: No PlayerStart found!"));
+        UE_LOG(LogTemp, Error, TEXT("PostLogin: No PlayerStart found in level!"));
         return;
     }
 
+    // Spawn correct role pawn
     FActorSpawnParameters Params;
     Params.SpawnCollisionHandlingOverride =
         ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
@@ -65,22 +74,30 @@ void AVPGameMode::PostLogin(APlayerController* NewPlayer)
 
     if (!NewPawn)
     {
-        UE_LOG(LogTemp, Error, TEXT("VPGameMode: Failed to spawn pawn!"));
+        UE_LOG(LogTemp, Error, TEXT("PostLogin: SpawnActor failed for %s"),
+            *UEnum::GetValueAsString(AssignedRole));
         return;
     }
 
+    // Possess and assign role
     NewPlayer->Possess(NewPawn);
 
     if (AVPCharacter* VPChar = Cast<AVPCharacter>(NewPawn))
     {
         VPChar->SetRole_Server(AssignedRole);
 
-        // ← THIS is the missing line — store role against controller
+        // Store in map — used by RequestRespawn to restore correct role
         PlayerRoles.Add(NewPlayer, AssignedRole);
+        // Reset input mode — main menu sets UIOnly which persists across travel
+        NewPlayer->SetShowMouseCursor(false);
+        NewPlayer->SetInputMode(FInputModeGameOnly());
 
-        UE_LOG(LogTemp, Warning, TEXT("Player %d spawned as: %s"),
-            PlayerCount,
-            *UEnum::GetValueAsString(AssignedRole));
+        UE_LOG(LogTemp, Warning, TEXT("PostLogin: Player %d assigned as %s"),
+            PlayerCount, *UEnum::GetValueAsString(AssignedRole));
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("PostLogin: Cast to AVPCharacter failed — check Blueprint parent class"));
     }
 }
 
@@ -88,77 +105,77 @@ void AVPGameMode::RequestRespawn(AController* DeadController)
 {
     if (!DeadController) return;
 
-    // Destroy the dead pawn
+    // Destroy dead pawn
     if (APawn* OldPawn = DeadController->GetPawn())
-    {
         OldPawn->Destroy();
+
+    // Lookup role from map — pawn is gone so we can't read it from the character
+    EVPRole* StoredRole = PlayerRoles.Find(DeadController);
+    if (!StoredRole)
+    {
+        UE_LOG(LogTemp, Error, TEXT("RequestRespawn: No stored role for controller — falling back to RestartPlayer"));
+        RestartPlayer(DeadController);
+        return;
     }
 
-    // Respawn after delay — lambda captures controller safely
+    EVPRole RoleToRestore = *StoredRole;
+    TSubclassOf<APawn> PawnClass = (RoleToRestore == EVPRole::Infiltrator)
+        ? InfiltratorClass
+        : HackerClass;
+
+    // Respawn after delay
     FTimerHandle RespawnTimer;
     FTimerDelegate RespawnDelegate;
-    RespawnDelegate.BindLambda([this, DeadController]()
+    RespawnDelegate.BindLambda([this, DeadController, PawnClass, RoleToRestore]()
+    {
+        if (!DeadController) return;
+
+        AActor* StartSpot = FindPlayerStart(DeadController);
+        if (!StartSpot || !PawnClass) return;
+
+        FActorSpawnParameters Params;
+        Params.SpawnCollisionHandlingOverride =
+            ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+        APawn* NewPawn = GetWorld()->SpawnActor<APawn>(
+            PawnClass,
+            StartSpot->GetActorLocation(),
+            StartSpot->GetActorRotation(),
+            Params
+        );
+
+        if (!NewPawn) return;
+
+        if (APlayerController* PC = Cast<APlayerController>(DeadController))
+            PC->Possess(NewPawn);
+
+        if (AVPCharacter* VPChar = Cast<AVPCharacter>(NewPawn))
         {
-            if (!DeadController) return;
+            VPChar->SetRole_Server(RoleToRestore);
+            UE_LOG(LogTemp, Warning, TEXT("RequestRespawn: Respawned as %s"),
+                *UEnum::GetValueAsString(RoleToRestore));
+        }
+    });
 
-            // Re-run PostLogin role assignment logic
-            if (APlayerController* PC = Cast<APlayerController>(DeadController))
-            {
-                // Determine role from PlayerCount position
-                // Player 1 controller always gets Infiltrator back
-                TSubclassOf<APawn> PawnClass = nullptr;
-
-                if (AVPCharacter* OldChar = Cast<AVPCharacter>(PC->GetPawn()))
-                {
-                    PawnClass = (OldChar->GetRole() == EVPRole::Infiltrator)
-                        ? InfiltratorClass
-                        : HackerClass;
-                }
-                else
-                {
-                    // Fallback — just restart normally
-                    RestartPlayer(DeadController);
-                    return;
-                }
-
-                AActor* StartSpot = FindPlayerStart(PC);
-                if (!StartSpot) return;
-
-                FActorSpawnParameters Params;
-                Params.SpawnCollisionHandlingOverride =
-                    ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-                APawn* NewPawn = GetWorld()->SpawnActor<APawn>(
-                    PawnClass,
-                    StartSpot->GetActorLocation(),
-                    StartSpot->GetActorRotation(),
-                    Params
-                );
-
-                if (NewPawn)
-                {
-                    PC->Possess(NewPawn);
-
-                    if (AVPCharacter* VPChar = Cast<AVPCharacter>(NewPawn))
-                    {
-                        // Restore same role on respawn
-                        EVPRole RestoredRole = (PawnClass == InfiltratorClass)
-                            ? EVPRole::Infiltrator
-                            : EVPRole::Hacker;
-                        VPChar->SetRole_Server(RestoredRole);
-
-                        UE_LOG(LogTemp, Warning, TEXT("Player respawned as: %s"),
-                            *UEnum::GetValueAsString(RestoredRole));
-                    }
-                }
-            }
-        });
-
-    GetWorldTimerManager().SetTimer(
-        RespawnTimer,
-        RespawnDelegate,
-        RespawnDelay,
-        false
-    );
+    GetWorldTimerManager().SetTimer(RespawnTimer, RespawnDelegate, RespawnDelay, false);
 }
 
+AActor* AVPGameMode::FindPlayerStart_Implementation(
+    AController* Player, const FString& IncomingName)
+{
+    // Collect all PlayerStarts in the level
+    TArray<AActor*> PlayerStarts;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(),
+        APlayerStart::StaticClass(), PlayerStarts);
+
+    if (PlayerStarts.Num() == 0)
+    {
+        UE_LOG(LogTemp, Error, TEXT("FindPlayerStart: No PlayerStart actors found!"));
+        return Super::FindPlayerStart_Implementation(Player, IncomingName);
+    }
+
+    // Pick based on PlayerCount — player 1 gets first start, player 2 gets second
+    int32 Index = FMath::Clamp(PlayerCount - 1, 0, PlayerStarts.Num() - 1);
+    UE_LOG(LogTemp, Warning, TEXT("FindPlayerStart: Using PlayerStart index %d"), Index);
+    return PlayerStarts[Index];
+}

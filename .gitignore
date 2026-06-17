@@ -74,6 +74,9 @@ Plugins/**/Intermediate/*
 # Compiled source files for the engine to use
 Content/**/__ExternalActors__/**
 
+#Builds Folder ignored
+Builds/*
+
 # Not required for a simple game
 Content/**/__ExternalObjects__/**
 
