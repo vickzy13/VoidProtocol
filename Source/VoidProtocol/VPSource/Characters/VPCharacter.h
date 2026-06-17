@@ -9,94 +9,109 @@ class UCameraComponent;
 class UInputAction;
 class UVPHealthComponent;
 struct FInputActionValue;
+class UInputMappingContext;
+
+UENUM(BlueprintType)
+enum class EVPRole : uint8
+{
+    None        UMETA(DisplayName = "None"),
+    Infiltrator UMETA(DisplayName = "Infiltrator"),
+    Hacker      UMETA(DisplayName = "Hacker")
+};
 
 UCLASS()
 class VOIDPROTOCOL_API AVPCharacter : public ACharacter
 {
     GENERATED_BODY()
 
-	/** Camera boom positioning the camera behind the character */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	USpringArmComponent* CameraBoom;
+private:
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+    USpringArmComponent* CameraBoom;
 
-	/** Follow camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	UCameraComponent* FollowCamera;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+    UCameraComponent* FollowCamera;
 
-	/** Follow camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	UVPHealthComponent* HealthComponent;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+    UVPHealthComponent* HealthComponent;
+
+    bool bIsAiming = false;
+    float DefaultArmLength = 300.f;
+    float AimArmLength = 150.f;
+    FVector DefaultSocketOffset = FVector(0.f, 60.f, 70.f);
+    FVector PeekLeftOffset = FVector(0.f, -60.f, 70.f);
+
+    void AddMappingContexts(APlayerController* PC);
+    void AimStart();
+    void AimEnd();
+    void UpdateCoverPeek(float DeltaTime);
+
+
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    UInputAction* JumpAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    UInputAction* MoveAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    UInputAction* LookAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    UInputAction* MouseLookAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    UInputAction* AimAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    UInputMappingContext* DefaultMappingContext;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    UInputMappingContext* MouseLookMappingContext;
 
 protected:
+    UPROPERTY(ReplicatedUsing = OnRep_Role, BlueprintReadOnly, Category = "Role")
+    EVPRole VPRole = EVPRole::None;
 
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* JumpAction;
+    UFUNCTION()
+    void OnRep_Role();
 
-	/** Move Input Action */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* MoveAction;
+    virtual void BeginPlay() override;
+    virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void PossessedBy(AController* NewController) override;
+    virtual void OnRep_Controller() override;
 
-	/** Look Input Action */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* LookAction;
-
-	/** Mouse Look Input Action */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* MouseLookAction;
-
-	/** Mouse Look Input Action */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* AimAction;
-
-	virtual void BeginPlay() override;
-	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-
-	/** Called for movement input */
-	void Move(const FInputActionValue& Value);
-
-	/** Called for looking input */
-	void Look(const FInputActionValue& Value);
-
-	bool bIsAiming = false;
-	float DefaultArmLength = 300.f;
-	float AimArmLength = 150.f;
-
-	void AimStart();
-	void AimEnd();
-
-	FVector DefaultSocketOffset = FVector(0.f, 60.f, 70.f);
-	FVector PeekLeftOffset = FVector(0.f, -60.f, 70.f);
-	void UpdateCoverPeek(float DeltaTime);
+    void Move(const FInputActionValue& Value);
+    void Look(const FInputActionValue& Value);
 
 public:
     AVPCharacter();
 
-public:
     virtual void Tick(float DeltaTime) override;
 
-	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
-		AController* EventInstigator, AActor* DamageCauser) override;
+    virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
+        AController* EventInstigator, AActor* DamageCauser) override;
 
-	/** Handles move inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category = "Input")
-	virtual void DoMove(float Right, float Forward);
+    // Role — GameMode calls SetRole_Server, anyone can read GetRole
+    void SetRole_Server(EVPRole NewRole);
 
-	/** Handles look inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category = "Input")
-	virtual void DoLook(float Yaw, float Pitch);
+    UFUNCTION(BlueprintCallable, Category = "Role")
+    EVPRole GetRole() const { return VPRole; }
 
-	/** Handles jump pressed inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category = "Input")
-	virtual void DoJumpStart();
+    // Input interface — callable from Blueprint or UI
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoMove(float Right, float Forward);
 
-	/** Handles jump pressed inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category = "Input")
-	virtual void DoJumpEnd();
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoLook(float Yaw, float Pitch);
 
-	/** Returns CameraBoom subobject **/
-	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoJumpStart();
 
-	/** Returns FollowCamera subobject **/
-	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoJumpEnd();
+
+    FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
+    FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+    FORCEINLINE UVPHealthComponent* GetHealthComponent() const { return HealthComponent; }
 };

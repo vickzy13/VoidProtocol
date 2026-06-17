@@ -9,6 +9,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "VPSource/Components/VPHealthComponent.h"
+#include "Net/UnrealNetwork.h"
 
 AVPCharacter::AVPCharacter()
 {
@@ -51,7 +52,18 @@ AVPCharacter::AVPCharacter()
 	HealthComponent = CreateDefaultSubobject<UVPHealthComponent>(TEXT("HealthComponent"));
 }
 
-void AVPCharacter::BeginPlay() { Super::BeginPlay(); }
+void AVPCharacter::BeginPlay() 
+{ 
+	Super::BeginPlay();
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
+			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		}
+	}
+}
 void AVPCharacter::Tick(float DeltaTime) 
 { 
 	Super::Tick(DeltaTime); 
@@ -64,6 +76,41 @@ void AVPCharacter::Tick(float DeltaTime)
 	);
 	UpdateCoverPeek(DeltaTime);
 }
+
+void AVPCharacter::GetLifetimeReplicatedProps(
+	TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AVPCharacter, VPRole);
+}
+
+void AVPCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	AddMappingContexts(Cast<APlayerController>(NewController));
+}
+
+void AVPCharacter::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+	AddMappingContexts(Cast<APlayerController>(GetController()));
+}
+
+void AVPCharacter::OnRep_Role()
+{
+	UE_LOG(LogTemp, Warning, TEXT("%s role set on client: %s"),
+		*GetName(),
+		*UEnum::GetValueAsString(VPRole));
+}
+
+void AVPCharacter::SetRole_Server(EVPRole NewRole)
+{
+	// Only server should call this
+	if (!HasAuthority()) return;
+	VPRole = NewRole;
+	OnRep_Role(); // manually call on server since RepNotify only fires on clients
+}
+
 void AVPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
@@ -144,6 +191,22 @@ void AVPCharacter::DoJumpEnd()
 {
 	// signal the character to stop jumping
 	StopJumping();
+}
+
+void AVPCharacter::AddMappingContexts(APlayerController* PC)
+{
+	if (!PC) return;
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem =
+		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
+
+	if (!Subsystem) return;
+
+	if (DefaultMappingContext)
+		Subsystem->AddMappingContext(DefaultMappingContext, 0);
+
+	if (MouseLookMappingContext)
+		Subsystem->AddMappingContext(MouseLookMappingContext, 1); // priority 1 — higher than default
 }
 
 void AVPCharacter::AimStart() { bIsAiming = true; }
