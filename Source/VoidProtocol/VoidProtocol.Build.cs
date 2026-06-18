@@ -23,8 +23,11 @@ public class VoidProtocol : ModuleRules
 			"OnlineSubsystemUtils",
 			"OnlineSubsystemNull",
             "Sockets", 
-			"Networking"
-		});
+			"Networking",
+            "AIModule",
+			"NavigationSystem",
+			"GameplayTasks"
+        });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
