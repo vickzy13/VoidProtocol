@@ -6,6 +6,7 @@
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AIPerceptionSystem.h"
 #include "VPSource/Characters/VPCharacter.h"
+#include "NavigationSystem.h"
 
 // Blackboard key names — must match exactly what you create in the BB asset
 // VPGuardController.cpp — must have ALL of these:
@@ -44,24 +45,17 @@ void AVPGuardController::OnPossess(APawn* InPawn)
 {
     Super::OnPossess(InPawn);
 
-    UE_LOG(LogTemp, Warning, TEXT("VPGuardController: OnPossess called on %s | NetMode: %d"),
-        *InPawn->GetName(),
-        (int32)GetWorld()->GetNetMode());
-
-    if (GetWorld()->GetNetMode() == NM_Client)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("VPGuardController: Skipping — client only"));
-        return;
-    }
+    if (GetWorld()->GetNetMode() == NM_Client) return;
 
     if (!GuardBehaviorTree)
     {
-        UE_LOG(LogTemp, Error, TEXT("VPGuardController: GuardBehaviorTree is NULL — assign BT_VPGuard in BP_VPGuardController"));
+        UE_LOG(LogTemp, Error, TEXT("VPGuardController: No BehaviorTree assigned!"));
         return;
     }
 
     RunBehaviorTree(GuardBehaviorTree);
-    UE_LOG(LogTemp, Warning, TEXT("VPGuardController: BT started on %s"), *InPawn->GetName());
+    UE_LOG(LogTemp, Warning, TEXT("VPGuardController: BT started on %s"),
+        *InPawn->GetName());
 }
 
 void AVPGuardController::OnUnPossess()

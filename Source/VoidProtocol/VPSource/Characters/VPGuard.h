@@ -36,6 +36,7 @@ public:
     AVPGuard();
 
     virtual void BeginPlay() override;
+    virtual void Tick(float DeltaTime) override;
 
     // Called by BT Task to get next patrol point
     UFUNCTION(BlueprintCallable, Category = "Patrol")
@@ -46,4 +47,7 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Patrol")
     bool HasPatrolPoints() const { return PatrolPoints.Num() > 0; }
+
+    UPROPERTY(BlueprintReadOnly, Category = "Animation")
+    FVector AnimGroundVelocity = FVector::Zero();
 };

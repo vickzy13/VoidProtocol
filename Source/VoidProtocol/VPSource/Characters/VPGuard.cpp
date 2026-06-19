@@ -1,15 +1,13 @@
-// VPGuard.cpp
+﻿// VPGuard.cpp
 #include "VPSource/Characters/VPGuard.h"
 #include "VPSource/AI/VPGuardController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 AVPGuard::AVPGuard()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true; // ← confirm this is true
     AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
     AIControllerClass = AVPGuardController::StaticClass();
-
-    // Replicate to all clients so they see guard moving
     bReplicates = true;
     GetCharacterMovement()->SetIsReplicated(true);
 }
@@ -17,6 +15,12 @@ AVPGuard::AVPGuard()
 void AVPGuard::BeginPlay()
 {
     Super::BeginPlay();
+}
+
+void AVPGuard::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+    AnimGroundVelocity = GetVelocity();
 }
 
 AActor* AVPGuard::GetNextPatrolPoint()
