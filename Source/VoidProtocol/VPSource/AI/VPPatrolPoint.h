@@ -4,6 +4,8 @@
 #include "GameFramework/Actor.h"
 #include "VPPatrolPoint.generated.h"
 
+class UBillboardComponent;
+
 UCLASS()
 class VOIDPROTOCOL_API AVPPatrolPoint : public AActor
 {

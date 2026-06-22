@@ -24,6 +24,23 @@ private:
     FTimerHandle TargetUpdateTimer;
     AActor* CurrentTarget = nullptr;
 
+    TMap<AActor*, float> DetectionMeters;
+    TArray<AActor*> VisibleActors;
+
+    // VPGuardController.h — add:
+private:
+    float DetectionFillRateNear = 80.f;  // close range, fast
+    float DetectionFillRateFar = 25.f;   // far range, slow
+    float NearDistance = 300.f;
+    float FarDistance = 1000.f;
+    float DetectionFillRate = 50.f;   // % per second while visible
+    float DetectionDecayRate = 20.f;  // % per second while not visible
+    float AlertedThreshold = 100.f;
+
+    FTimerHandle DetectionTickTimer;
+
+    void TickDetection();
+
     void UpdateTargetLocation();
 
 protected:
