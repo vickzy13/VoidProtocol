@@ -62,6 +62,12 @@ private:
     UPROPERTY(EditDefaultsOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
     TSubclassOf<UUserWidget> DetectionWidgetClass;
 
+    UPROPERTY(EditDefaultsOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
+    TSubclassOf<UUserWidget> AlertWidgetClass;
+
+    UPROPERTY()
+    UUserWidget* AlertWidget = nullptr;
+
     UPROPERTY()
     UUserWidget* DetectionWidget = nullptr;
 

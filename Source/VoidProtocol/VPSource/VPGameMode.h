@@ -44,4 +44,8 @@ public:
 
     virtual AActor* FindPlayerStart_Implementation(
         AController* Player, const FString& IncomingName = TEXT("")) override;
+
+    void ReportSuspicious();
+    void ReportAlerted();
+    void ReportAllClear();
 };

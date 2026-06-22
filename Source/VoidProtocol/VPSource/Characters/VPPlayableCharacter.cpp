@@ -92,6 +92,12 @@ void AVPPlayableCharacter::SetupLocalPlayer(APlayerController* PC)
         if (DetectionWidget)
             DetectionWidget->AddToViewport();
     }
+    if (AlertWidgetClass && !AlertWidget)
+    {
+        AlertWidget = CreateWidget<UUserWidget>(PC, AlertWidgetClass);
+        if (AlertWidget)
+            AlertWidget->AddToViewport();
+    }
 }
 
 void AVPPlayableCharacter::PossessedBy(AController* NewController)

@@ -9,6 +9,7 @@
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerStart.h"
+#include "VPSource/VPGameState.h"
 
 AVPGameMode::AVPGameMode()
 {
@@ -178,4 +179,26 @@ AActor* AVPGameMode::FindPlayerStart_Implementation(
     int32 Index = FMath::Clamp(PlayerCount - 1, 0, PlayerStarts.Num() - 1);
     UE_LOG(LogTemp, Warning, TEXT("FindPlayerStart: Using PlayerStart index %d"), Index);
     return PlayerStarts[Index];
+}
+
+void AVPGameMode::ReportSuspicious()
+{
+    if (AVPGameState* GS = GetGameState<AVPGameState>())
+    {
+        // Only escalate — never downgrade via this call
+        if (GS->GetAlertLevel() == EVPAlertLevel::Unaware)
+            GS->SetAlertLevel(EVPAlertLevel::Suspicious);
+    }
+}
+
+void AVPGameMode::ReportAlerted()
+{
+    if (AVPGameState* GS = GetGameState<AVPGameState>())
+        GS->SetAlertLevel(EVPAlertLevel::Alerted);
+}
+
+void AVPGameMode::ReportAllClear()
+{
+    if (AVPGameState* GS = GetGameState<AVPGameState>())
+        GS->SetAlertLevel(EVPAlertLevel::Unaware);
 }

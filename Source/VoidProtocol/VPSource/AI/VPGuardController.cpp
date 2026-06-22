@@ -1,4 +1,4 @@
-// VPGuardController.cpp
+#include "VPSource/VPGameMode.h"
 #include "VPSource/AI/VPGuardController.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BlackboardComponent.h"
@@ -106,6 +106,7 @@ void AVPGuardController::TickDetection()
 {
     if (GetWorld()->GetNetMode() == NM_Client) return;
 
+    // Decay all meters
     TArray<AActor*> Keys;
     DetectionMeters.GetKeys(Keys);
     for (AActor* Key : Keys)
@@ -117,6 +118,7 @@ void AVPGuardController::TickDetection()
         }
     }
 
+    // Fill visible actors
     for (AActor* Visible : VisibleActors)
     {
         float& Meter = DetectionMeters.FindOrAdd(Visible);
@@ -135,49 +137,53 @@ void AVPGuardController::TickDetection()
                 FillRate *= 0.4f;
             else if (VPChar->GetVelocity().Size() > 400.f)
                 FillRate *= 1.5f;
+
+            // Push detection level to player's HUD
+            VPChar->SetDetectionLevel(Meter);
+            if (Meter > 0.f && GetPawn())
+                VPChar->SetThreatLocation(GetPawn()->GetActorLocation());
         }
 
         Meter = FMath::Clamp(Meter + FillRate * 0.1f, 0.f, 100.f);
     }
 
+    // Find best target
     AActor* BestTarget = nullptr;
     float BestMeter = 0.f;
     for (auto& Pair : DetectionMeters)
     {
-        if (Pair.Value >= AlertedThreshold && Pair.Value > BestMeter)
+        if (Pair.Value > BestMeter)
         {
             BestTarget = Pair.Key;
             BestMeter = Pair.Value;
         }
     }
 
-    if (BestTarget && CurrentTarget != BestTarget)
+    // Report to GameMode based on meter level
+    AVPGameMode* GM = Cast<AVPGameMode>(GetWorld()->GetAuthGameMode());
+    if (GM)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Guard ALERTED: %s"), *BestTarget->GetName());
+        if (BestMeter >= AlertedThreshold)
+            GM->ReportAlerted();
+        else if (BestMeter >= SuspiciousThreshold)
+            GM->ReportSuspicious();
+    }
+
+    // Chase if fully alerted
+    if (BestMeter >= AlertedThreshold && BestTarget && CurrentTarget != BestTarget)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Guard ALERTED: chasing %s"), *BestTarget->GetName());
         SetTargetActor(BestTarget);
     }
 
+    // Lose target if fully decayed
     if (CurrentTarget)
     {
         float* CurrentMeter = DetectionMeters.Find(CurrentTarget);
         if (!CurrentMeter || *CurrentMeter <= 0.f)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Guard LOST target due to decay"));
             ClearTargetActor();
-        }
-    }
-
-    for (auto& Pair : DetectionMeters)
-    {
-        if (AVPCharacter* VPChar = Cast<AVPCharacter>(Pair.Key))
-        {
-            VPChar->SetDetectionLevel(Pair.Value);
-            if (Pair.Value > 0.f && GetPawn())
-                VPChar->SetThreatLocation(GetPawn()->GetActorLocation());
-        }
     }
 }
-
 void AVPGuardController::SetTargetActor(AActor* Target)
 {
     if (UBlackboardComponent* BB = GetBlackboardComponent())

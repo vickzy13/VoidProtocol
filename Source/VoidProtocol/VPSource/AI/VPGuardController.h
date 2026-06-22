@@ -35,6 +35,7 @@ private:
     float FarDistance = 1000.f;
     float DetectionFillRate = 50.f;   // % per second while visible
     float DetectionDecayRate = 20.f;  // % per second while not visible
+    float SuspiciousThreshold = 40.f;
     float AlertedThreshold = 100.f;
 
     FTimerHandle DetectionTickTimer;
