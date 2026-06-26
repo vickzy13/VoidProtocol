@@ -3,10 +3,34 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "VPHacker.generated.h"
 
+class UVPHackerComponent;
+
 UCLASS()
 class VOIDPROTOCOL_API AVPHacker : public AVPPlayableCharacter
 {
     GENERATED_BODY()
+
+private:
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components",
+        meta = (AllowPrivateAccess = "true"))
+    UVPHackerComponent* HackerComponent;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    UInputAction* HackAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    UInputAction* JumpCameraAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    UInputAction* ExitCameraAction;
+
+    void OnHackPressed();
+    void OnHackReleased();
+    void OnJumpCamera();
+    void OnExitCamera();
+
+protected:
+    virtual void SetupAbilityInputBindings(UEnhancedInputComponent* EIC) override;
 
 public:
     AVPHacker();

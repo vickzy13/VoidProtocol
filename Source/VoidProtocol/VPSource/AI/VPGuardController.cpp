@@ -1,5 +1,5 @@
-#include "VPSource/VPGameMode.h"
 #include "VPSource/AI/VPGuardController.h"
+#include "VPSource/VPGameMode.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AIPerceptionComponent.h"

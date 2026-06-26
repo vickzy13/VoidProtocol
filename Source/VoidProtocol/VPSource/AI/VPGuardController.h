@@ -75,4 +75,7 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "AI")
     void ClearTargetActor();
+
+    UFUNCTION(BlueprintCallable, Category = "AI")
+    UBehaviorTree* GetGuardBehaviorTree() const { return GuardBehaviorTree; }
 };

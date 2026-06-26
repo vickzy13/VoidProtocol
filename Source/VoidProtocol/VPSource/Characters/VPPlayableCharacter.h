@@ -98,6 +98,7 @@ private:
 protected:
     virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+    virtual void SetupAbilityInputBindings(UEnhancedInputComponent* EIC) {}
     virtual void PossessedBy(AController* NewController) override;
     virtual void OnRep_Controller() override;
     virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;

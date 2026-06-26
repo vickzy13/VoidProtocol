@@ -137,6 +137,7 @@ void AVPPlayableCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
             EIC->BindAction(CrouchAction, ETriggerEvent::Started, this, &AVPPlayableCharacter::StartCrouch);
             EIC->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AVPPlayableCharacter::EndCrouch);
         }
+        SetupAbilityInputBindings(EIC);
     }
 }
 
