@@ -1,11 +1,10 @@
-// VPDetectionWidget.h
 #pragma once
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "VPSource/Characters/VPCharacter.h"
 #include "VPDetectionWidget.generated.h"
 
 class UImage;
-class AVPCharacter;
 
 UCLASS()
 class VOIDPROTOCOL_API UVPDetectionWidget : public UUserWidget

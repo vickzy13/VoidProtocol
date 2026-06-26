@@ -9,6 +9,7 @@
 #include "VPSource/Characters/VPCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "NavigationSystem.h"
+#include "VPSource/Characters/VPGuard.h"
 
 // Blackboard key names — must match exactly what you create in the BB asset
 // VPGuardController.cpp — must have ALL of these:
@@ -105,6 +106,10 @@ void AVPGuardController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus
 void AVPGuardController::TickDetection()
 {
     if (GetWorld()->GetNetMode() == NM_Client) return;
+
+    AVPGuard* Guard = Cast<AVPGuard>(GetPawn());
+    if (Guard && Guard->IsUnconscious()) return;
+
 
     // Decay all meters
     TArray<AActor*> Keys;
@@ -212,6 +217,32 @@ void AVPGuardController::ClearTargetActor()
 
         UE_LOG(LogTemp, Warning, TEXT("Guard lost target — investigating last position"));
     }
+}
+
+void AVPGuardController::ClearAllDetection()
+{
+    // Push 0 FIRST before clearing the map
+    for (auto& Pair : DetectionMeters)
+    {
+        if (AVPCharacter* VPChar = Cast<AVPCharacter>(Pair.Key))
+        {
+            VPChar->SetDetectionLevel(0.f);
+            VPChar->SetThreatLocation(FVector::ZeroVector);
+        }
+    }
+
+    // NOW clear everything
+    DetectionMeters.Empty();
+    VisibleActors.Empty();
+    CurrentTarget = nullptr;
+
+    if (UBlackboardComponent* BB = GetBlackboardComponent())
+    {
+        BB->ClearValue(BBKey_TargetActor);
+        BB->ClearValue(BBKey_HasLastKnownLocation);
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("Guard detection cleared"));
 }
 
 void AVPGuardController::UpdateTargetLocation()

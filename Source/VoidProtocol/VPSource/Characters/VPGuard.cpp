@@ -49,32 +49,30 @@ void AVPGuard::SetUnconscious(bool bUnconscious)
 
     if (bUnconscious)
     {
-        // Disable AI
+        // Stop AI
         if (AVPGuardController* GC = Cast<AVPGuardController>(GetController()))
+        {
             GC->StopMovement();
 
-        // Disable collision
+            // Clear detection state
+            GC->ClearAllDetection();
+        }
+
         GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         GetCharacterMovement()->DisableMovement();
 
-        // Wake up after 60 seconds
         GetWorldTimerManager().SetTimer(RecoverTimer, [this]()
             {
                 SetUnconscious(false);
             }, 60.f, false);
-
-        UE_LOG(LogTemp, Warning, TEXT("Guard %s unconscious for 60s"), *GetName());
     }
     else
     {
-        // Re-enable AI
         GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
         GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 
         if (AVPGuardController* GC = Cast<AVPGuardController>(GetController()))
             GC->RunBehaviorTree(GC->GetGuardBehaviorTree());
-
-        UE_LOG(LogTemp, Warning, TEXT("Guard %s recovered"), *GetName());
     }
 }
 

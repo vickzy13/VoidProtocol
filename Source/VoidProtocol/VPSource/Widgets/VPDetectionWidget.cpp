@@ -38,9 +38,10 @@ void UVPDetectionWidget::UpdateDetectionVisual()
     if (!DetectionArc || !OwningCharacter) return;
 
     float Level = OwningCharacter->GetDetectionLevel();
+    FVector ThreatLoc = OwningCharacter->GetThreatLocation();
 
-    // Hidden when no detection at all
-    if (Level <= 0.f)
+    // Hide if no detection OR no valid threat location
+    if (Level <= 0.f || ThreatLoc.IsZero())
     {
         DetectionArc->SetVisibility(ESlateVisibility::Hidden);
         return;
@@ -65,7 +66,6 @@ void UVPDetectionWidget::UpdateDetectionVisual()
     if (!PC) return;
 
     FVector PlayerLoc = OwningCharacter->GetActorLocation();
-    FVector ThreatLoc = OwningCharacter->GetThreatLocation();
 
     FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(PlayerLoc, ThreatLoc);
     float WorldYawToThreat = LookAtRot.Yaw;
