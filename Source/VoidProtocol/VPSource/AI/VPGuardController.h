@@ -1,3 +1,4 @@
+// VPGuardController.h
 #pragma once
 #include "CoreMinimal.h"
 #include "AIController.h"
@@ -8,47 +9,67 @@ class UBehaviorTree;
 class UBlackboardComponent;
 class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
+class UAISenseConfig_Hearing;
 
 UCLASS()
 class VOIDPROTOCOL_API AVPGuardController : public AAIController
 {
     GENERATED_BODY()
-   
+
+    //=========================================================
+    // PRIVATE — components + detection state
+    //=========================================================
 private:
-    UPROPERTY(VisibleAnywhere, Category = "AI")
+    UPROPERTY(VisibleAnywhere, Category="AI")
     UAIPerceptionComponent* PerceptionComp;
 
-    UPROPERTY(VisibleAnywhere, Category = "AI")
+    UPROPERTY(VisibleAnywhere, Category="AI")
     UAISenseConfig_Sight* SightConfig;
 
-    FTimerHandle TargetUpdateTimer;
+    UPROPERTY(VisibleAnywhere, Category="AI")
+    UAISenseConfig_Hearing* HearingConfig;
+
+    // Current chase target
     AActor* CurrentTarget = nullptr;
 
+    // Timer to continuously update target location while chasing
+    FTimerHandle TargetUpdateTimer;
+
+    // Per-actor detection meters (Hitman-style gradual detection)
     TMap<AActor*, float> DetectionMeters;
     TArray<AActor*> VisibleActors;
 
-    // VPGuardController.h � add:
-private:
-    float DetectionFillRateNear = 80.f;  // close range, fast
-    float DetectionFillRateFar = 25.f;   // far range, slow
-    float NearDistance = 300.f;
-    float FarDistance = 1000.f;
-    float DetectionFillRate = 50.f;   // % per second while visible
-    float DetectionDecayRate = 20.f;  // % per second while not visible
-    float SuspiciousThreshold = 40.f;
-    float AlertedThreshold = 100.f;
+    // Detection tuning
+    float DetectionFillRateNear = 80.f;   // fast fill when close
+    float DetectionFillRateFar  = 25.f;   // slow fill when far
+    float NearDistance          = 300.f;
+    float FarDistance           = 1000.f;
+    float DetectionDecayRate    = 12.f;   // decay when out of sight
+    float SuspiciousThreshold   = 40.f;
+    float AlertedThreshold      = 100.f;
 
+    // Detection tick timer
     FTimerHandle DetectionTickTimer;
 
+    // Internal helpers
     void TickDetection();
-
     void UpdateTargetLocation();
 
+    //=========================================================
+    // PROTECTED — configurable in BP_VPGuardController
+    //=========================================================
 protected:
-    UPROPERTY(EditDefaultsOnly, Category = "AI")
+    UPROPERTY(EditDefaultsOnly, Category="AI")
     UBehaviorTree* GuardBehaviorTree;
 
-    // Blackboard keys
+    // Random patrol radius around spawn point
+    UPROPERTY(EditDefaultsOnly, Category="AI|Patrol")
+    float PatrolRadius = 1500.f;
+
+    // Guard's spawn location — used as center of patrol area
+    FVector SpawnLocation = FVector::ZeroVector;
+
+    // Blackboard keys — must match BB_VPGuard asset exactly
     static const FName BBKey_TargetActor;
     static const FName BBKey_PatrolIndex;
     static const FName BBKey_AlertState;
@@ -57,7 +78,7 @@ protected:
     static const FName BBKey_PatrolPoint;
 
     //=========================================================
-    // PUBLIC � overrides
+    // PUBLIC — overrides + external interface
     //=========================================================
 public:
     AVPGuardController();
@@ -65,20 +86,25 @@ public:
     virtual void OnPossess(APawn* InPawn) override;
     virtual void OnUnPossess() override;
 
-    // Called by perception system when something is sensed
+    // Perception callback
     UFUNCTION()
     void OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
 
-    // Accessors for Behavior Tree tasks
-    UFUNCTION(BlueprintCallable, Category = "AI")
+    // Called by BT to get next random patrol point
+    UFUNCTION(BlueprintCallable, Category="AI|Patrol")
+    void PickNextPatrolPoint();
+
+    // Chase target management
+    UFUNCTION(BlueprintCallable, Category="AI")
     void SetTargetActor(AActor* Target);
 
-    UFUNCTION(BlueprintCallable, Category = "AI")
+    UFUNCTION(BlueprintCallable, Category="AI")
     void ClearTargetActor();
 
+    // Clear all detection — called when guard goes unconscious
     void ClearAllDetection();
 
-
-    UFUNCTION(BlueprintCallable, Category = "AI")
+    // Accessor for BT restart on recovery
+    UFUNCTION(BlueprintCallable, Category="AI")
     UBehaviorTree* GetGuardBehaviorTree() const { return GuardBehaviorTree; }
 };
