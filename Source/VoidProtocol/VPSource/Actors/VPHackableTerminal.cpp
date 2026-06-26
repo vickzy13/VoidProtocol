@@ -3,6 +3,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "VPSource/VPGameState.h"
 
 AVPHackableTerminal::AVPHackableTerminal()
 {
@@ -42,19 +43,17 @@ void AVPHackableTerminal::OnHackCompleted(AActor* Hacker)
     if (!HasAuthority()) return;
 
     bIsHacked = true;
-    OnRep_IsHacked(); // manual call on server
+    OnRep_IsHacked();
 
-    // TODO Day 11 — reveal guard positions on minimap for HackDuration
-    UE_LOG(LogTemp, Warning, TEXT("Terminal %s hacked — guard positions revealed for %.0fs"),
-        *GetName(), HackDuration);
+    // Complete the steal_data objective when terminal is hacked
+    if (AVPGameState* GS = GetWorld()->GetGameState<AVPGameState>())
+        GS->CompleteObjective("steal_data");
 
-    // Reset after duration
     GetWorldTimerManager().SetTimer(HackResetTimer, [this]()
-    {
-        bIsHacked = false;
-        OnRep_IsHacked();
-        UE_LOG(LogTemp, Warning, TEXT("Terminal %s reset"), *GetName());
-    }, HackDuration, false);
+        {
+            bIsHacked = false;
+            OnRep_IsHacked();
+        }, HackDuration, false);
 }
 
 FVector AVPHackableTerminal::GetHackWidgetLocation() const

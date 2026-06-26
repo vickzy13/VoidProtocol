@@ -33,7 +33,7 @@ void AVPGameMode::PostLogin(APlayerController* NewPlayer)
     // Player 1 = Infiltrator, Player 2 = Hacker
     EVPRole AssignedRole = (PlayerCount == 1)
         ? EVPRole::Infiltrator
-        : EVPRole::Infiltrator;
+        : EVPRole::Hacker;
 
     TSubclassOf<APawn> PawnClass = (AssignedRole == EVPRole::Infiltrator)
         ? InfiltratorClass

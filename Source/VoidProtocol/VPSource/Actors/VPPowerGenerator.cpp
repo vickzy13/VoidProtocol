@@ -4,6 +4,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Engine/Light.h"
 #include "Kismet/GameplayStatics.h"
+#include "VPSource/VPGameState.h"
 
 AVPPowerGenerator::AVPPowerGenerator()
 {
@@ -63,17 +64,17 @@ void AVPPowerGenerator::OnHackCompleted(AActor* Hacker)
     if (!HasAuthority()) return;
 
     bIsPowerDown = true;
-    OnRep_IsPowerDown(); // manual call on server
+    OnRep_IsPowerDown();
 
-    UE_LOG(LogTemp, Warning, TEXT("Generator %s hacked — power down for %.0fs"),
-        *GetName(), PowerDownDuration);
+    // Complete disable_reactor objective
+    if (AVPGameState* GS = GetWorld()->GetGameState<AVPGameState>())
+        GS->CompleteObjective("disable_reactor");
 
-    // Restore power after duration
     GetWorldTimerManager().SetTimer(PowerRestoreTimer, [this]()
-    {
-        bIsPowerDown = false;
-        OnRep_IsPowerDown();
-    }, PowerDownDuration, false);
+        {
+            bIsPowerDown = false;
+            OnRep_IsPowerDown();
+        }, PowerDownDuration, false);
 }
 
 FVector AVPPowerGenerator::GetHackWidgetLocation() const

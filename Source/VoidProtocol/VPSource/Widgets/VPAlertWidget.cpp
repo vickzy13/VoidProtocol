@@ -8,43 +8,58 @@ void UVPAlertWidget::NativeConstruct()
 {
     Super::NativeConstruct();
 
-    // Bind to GameState delegate
+    // Hide everything initially
+    if (AlertBackground)
+    {
+        AlertBackground->SetVisibility(ESlateVisibility::Hidden);
+        AlertBackground->SetColorAndOpacity(FLinearColor::Transparent);
+    }
+
+    if (AlertText)
+    {
+        AlertText->SetText(FText::GetEmpty());
+        AlertText->SetVisibility(ESlateVisibility::Hidden);
+    }
+
+    // Bind to GameState
     if (AVPGameState* GS = GetWorld()->GetGameState<AVPGameState>())
     {
         GS->OnAlertLevelChanged.AddDynamic(this, &UVPAlertWidget::OnAlertLevelChanged);
-        // Set initial state
         OnAlertLevelChanged(GS->GetAlertLevel());
     }
 }
 
 void UVPAlertWidget::OnAlertLevelChanged(EVPAlertLevel NewLevel)
 {
-    if (!AlertText) return;
+    if (NewLevel == EVPAlertLevel::Unaware)
+    {
+        if (AlertBackground)
+            AlertBackground->SetVisibility(ESlateVisibility::Hidden);
+        if (AlertText)
+            AlertText->SetVisibility(ESlateVisibility::Hidden);
+        return;
+    }
+
+    if (AlertBackground)
+        AlertBackground->SetVisibility(ESlateVisibility::HitTestInvisible);
+    if (AlertText)
+        AlertText->SetVisibility(ESlateVisibility::HitTestInvisible);
 
     switch (NewLevel)
     {
-    case EVPAlertLevel::Unaware:
-        AlertText->SetText(FText::FromString(""));
-        if (AlertBackground)
-            AlertBackground->SetVisibility(ESlateVisibility::Hidden);
-        break;
-
     case EVPAlertLevel::Suspicious:
-        AlertText->SetText(FText::FromString("! SUSPICIOUS"));
+        if (AlertText)
+            AlertText->SetText(FText::FromString("! SUSPICIOUS"));
         if (AlertBackground)
-        {
-            AlertBackground->SetVisibility(ESlateVisibility::HitTestInvisible);
-            AlertBackground->SetColorAndOpacity(FLinearColor(1.f, 0.85f, 0.f, 1.f)); // yellow
-        }
+            AlertBackground->SetColorAndOpacity(
+                FLinearColor(1.f, 0.85f, 0.f, 1.f));
         break;
 
     case EVPAlertLevel::Alerted:
-        AlertText->SetText(FText::FromString("!! ALERTED"));
+        if (AlertText)
+            AlertText->SetText(FText::FromString("!! ALERTED"));
         if (AlertBackground)
-        {
-            AlertBackground->SetVisibility(ESlateVisibility::HitTestInvisible);
             AlertBackground->SetColorAndOpacity(FLinearColor::Red);
-        }
         break;
     }
 }

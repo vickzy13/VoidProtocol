@@ -65,6 +65,12 @@ private:
     UPROPERTY(EditDefaultsOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
     TSubclassOf<UUserWidget> AlertWidgetClass;
 
+    UPROPERTY(EditDefaultsOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
+    TSubclassOf<UUserWidget> MissionWidgetClass;
+
+    UPROPERTY()
+    UUserWidget* MissionWidget = nullptr;
+
     UPROPERTY()
     UUserWidget* AlertWidget = nullptr;
 

@@ -98,6 +98,12 @@ void AVPPlayableCharacter::SetupLocalPlayer(APlayerController* PC)
         if (AlertWidget)
             AlertWidget->AddToViewport();
     }
+    if (MissionWidgetClass && !MissionWidget)
+    {
+        MissionWidget = CreateWidget<UUserWidget>(PC, MissionWidgetClass);
+        if (MissionWidget)
+            MissionWidget->AddToViewport();
+    }
 }
 
 void AVPPlayableCharacter::PossessedBy(AController* NewController)
