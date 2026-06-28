@@ -1,7 +1,7 @@
-// VPPlayableCharacter.h
 #pragma once
 #include "CoreMinimal.h"
 #include "VPSource/Characters/VPCharacter.h"
+#include "VPSource/Components/VPHealthComponent.h"
 #include "VPPlayableCharacter.generated.h"
 
 class USpringArmComponent;
@@ -100,13 +100,10 @@ private:
     void StartCrouch();
     void EndCrouch();
     void UpdateCoverPeek(float DeltaTime);
-
+    void DebugTakeDamage();
     // Footstep timer
     FTimerHandle FootstepTimer;
-
-    //=========================================================
-    // PROTECTED — engine overrides
-    //=========================================================
+    
 protected:
     virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
@@ -116,9 +113,7 @@ protected:
     virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
     virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
     virtual void OnRep_bIsDowned() override;
-    //=========================================================
-    // PUBLIC — accessors + engine overrides
-    //=========================================================
+    
 public:
     AVPPlayableCharacter();
 

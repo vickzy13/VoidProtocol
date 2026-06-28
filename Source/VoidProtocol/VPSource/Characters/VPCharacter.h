@@ -20,11 +20,6 @@ class VOIDPROTOCOL_API AVPCharacter : public ACharacter
 {
     GENERATED_BODY()
 
-private:
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components",
-        meta = (AllowPrivateAccess = "true"))
-    UVPHealthComponent* HealthComponent;
-
 protected:
     UPROPERTY(ReplicatedUsing = OnRep_Role, BlueprintReadOnly, Category = "Role")
     EVPRole VPRole = EVPRole::None;
@@ -54,6 +49,10 @@ protected:
 
 public:
     AVPCharacter();
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components",
+        meta = (AllowPrivateAccess = "true"))
+    UVPHealthComponent* HealthComponent;
 
     virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
         AController* EventInstigator, AActor* DamageCauser) override;

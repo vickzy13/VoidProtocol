@@ -1,5 +1,6 @@
 #include "VPSource/Characters/VPInfiltrator.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "VPSource/Components/VPHealthComponent.h"
 #include "EnhancedInputComponent.h"
 
 AVPInfiltrator::AVPInfiltrator()
@@ -25,4 +26,16 @@ void AVPInfiltrator::OnTakedownPressed()
 {
     UE_LOG(LogTemp, Warning, TEXT("Takedown pressed"));
     InfiltratorComponent->TryTakedown();
+}
+
+void AVPInfiltrator::ServerRequestRevive_Implementation(AVPCharacter* PlayerToRevive)
+{
+    if (!PlayerToRevive || !PlayerToRevive->IsDowned()) return;
+
+    PlayerToRevive->SetDowned(false);
+
+    if (UVPHealthComponent* HC = PlayerToRevive->GetHealthComponent())
+        HC->Revive(50.f);
+
+    UE_LOG(LogTemp, Warning, TEXT("Infiltrator revived: %s"), *PlayerToRevive->GetName());
 }

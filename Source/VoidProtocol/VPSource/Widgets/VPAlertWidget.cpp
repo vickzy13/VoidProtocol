@@ -8,7 +8,6 @@ void UVPAlertWidget::NativeConstruct()
 {
     Super::NativeConstruct();
 
-    // Hide everything initially
     if (AlertBackground)
     {
         AlertBackground->SetVisibility(ESlateVisibility::Hidden);
@@ -21,11 +20,26 @@ void UVPAlertWidget::NativeConstruct()
         AlertText->SetVisibility(ESlateVisibility::Hidden);
     }
 
-    // Bind to GameState
+    TryBindToGameState();
+}
+
+void UVPAlertWidget::TryBindToGameState()
+{
     if (AVPGameState* GS = GetWorld()->GetGameState<AVPGameState>())
     {
         GS->OnAlertLevelChanged.AddDynamic(this, &UVPAlertWidget::OnAlertLevelChanged);
         OnAlertLevelChanged(GS->GetAlertLevel());
+        UE_LOG(LogTemp, Warning, TEXT("AlertWidget: bound to GameState"));
+    }
+    else
+    {
+        // GameState not ready yet — retry after 0.5s
+        FTimerHandle RetryHandle;
+        GetWorld()->GetTimerManager().SetTimer(RetryHandle, [this]()
+            {
+                TryBindToGameState();
+            }, 0.5f, false);
+        UE_LOG(LogTemp, Warning, TEXT("AlertWidget: GameState not ready, retrying..."));
     }
 }
 
@@ -74,16 +88,22 @@ void UVPAlertWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
     if (!GS) return;
 
     EVPAlertLevel Level = GS->GetAlertLevel();
+    if (Level == EVPAlertLevel::Unaware) return;
 
-    // Pulse effect for Suspicious and Alerted states
-    if (Level != EVPAlertLevel::Unaware)
+    // Update countdown text when Alerted
+    if (Level == EVPAlertLevel::Alerted && AlertText)
     {
-        PulseTimer += InDeltaTime * (Level == EVPAlertLevel::Alerted ? 3.f : 1.5f);
-        float PulseAlpha = (FMath::Sin(PulseTimer * PI) + 1.f) * 0.5f;
-        float Opacity = FMath::Lerp(0.5f, 1.f, PulseAlpha);
-
-        FLinearColor Color = AlertBackground->GetColorAndOpacity();
-        Color.A = Opacity;
-        AlertBackground->SetColorAndOpacity(Color);
+        float Countdown = GS->GetAlertCountdown();
+        AlertText->SetText(FText::FromString(
+            FString::Printf(TEXT("!! ALERTED — EXTRACT IN %.0fs"), Countdown)));
     }
+
+    // Pulse effect
+    PulseTimer += InDeltaTime * (Level == EVPAlertLevel::Alerted ? 3.f : 1.5f);
+    float PulseAlpha = (FMath::Sin(PulseTimer * PI) + 1.f) * 0.5f;
+    float Opacity = FMath::Lerp(0.5f, 1.f, PulseAlpha);
+
+    FLinearColor Color = AlertBackground->GetColorAndOpacity();
+    Color.A = Opacity;
+    AlertBackground->SetColorAndOpacity(Color);
 }

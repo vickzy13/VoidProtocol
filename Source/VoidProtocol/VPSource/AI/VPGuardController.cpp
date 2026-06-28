@@ -183,7 +183,6 @@ void AVPGuardController::TickDetection()
 {
     if (GetWorld()->GetNetMode() == NM_Client) return;
 
-    // Skip if guard is unconscious
     AVPGuard* Guard = Cast<AVPGuard>(GetPawn());
     if (Guard && Guard->IsUnconscious()) return;
 
@@ -204,32 +203,36 @@ void AVPGuardController::TickDetection()
     {
         float& Meter = DetectionMeters.FindOrAdd(Visible);
 
-        // Distance-based fill rate
         float Dist = FVector::Dist(GetPawn()->GetActorLocation(), Visible->GetActorLocation());
         float DistAlpha = FMath::Clamp(
             (Dist - NearDistance) / (FarDistance - NearDistance), 0.f, 1.f);
         float FillRate = FMath::Lerp(DetectionFillRateNear, DetectionFillRateFar, DistAlpha);
 
-        // Angle modifier — center of cone fills faster than edges
         FVector ToTarget = (Visible->GetActorLocation() - GetPawn()->GetActorLocation()).GetSafeNormal();
         float Dot = FVector::DotProduct(GetPawn()->GetActorForwardVector(), ToTarget);
         FillRate *= FMath::Lerp(0.5f, 1.5f, FMath::Clamp(Dot, 0.f, 1.f));
 
-        // Movement state modifier
         if (AVPCharacter* VPChar = Cast<AVPCharacter>(Visible))
         {
             if (VPChar->GetCharacterMovement()->IsCrouching())
-                FillRate *= 0.4f;       // crouching — harder to spot
+                FillRate *= 0.4f;
             else if (VPChar->GetVelocity().Size() > 400.f)
-                FillRate *= 1.5f;       // sprinting — easier to spot
+                FillRate *= 1.5f;
 
-            // Push detection level to player's HUD arc widget
             VPChar->SetDetectionLevel(Meter);
             if (Meter > 0.f && GetPawn())
                 VPChar->SetThreatLocation(GetPawn()->GetActorLocation());
         }
 
+        // Guarantee fill always beats decay while visible
+        FillRate = FMath::Max(FillRate, DetectionDecayRate + 5.f);
         Meter = FMath::Clamp(Meter + FillRate * 0.1f, 0.f, 100.f);
+    }
+
+    if (CurrentTarget)
+    {
+        float& ChaseTargetMeter = DetectionMeters.FindOrAdd(CurrentTarget);
+        ChaseTargetMeter = 100.f;
     }
 
     //─── Find highest detected target ───────────────────────
@@ -244,28 +247,36 @@ void AVPGuardController::TickDetection()
         }
     }
 
-    //─── Report to GameMode for global alert system ─────────
+    //─── Report to GameMode ──────────────────────────────────
     if (AVPGameMode* GM = Cast<AVPGameMode>(GetWorld()->GetAuthGameMode()))
     {
-        if (BestMeter >= AlertedThreshold)
+        if (CurrentTarget)
             GM->ReportAlerted();
         else if (BestMeter >= SuspiciousThreshold)
             GM->ReportSuspicious();
     }
 
-    //─── Start chasing if fully alerted ─────────────────────
-    if (BestMeter >= AlertedThreshold && BestTarget && CurrentTarget != BestTarget)
+    //─── Commit to one target — don't switch while chasing ──
+    if (!CurrentTarget)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Guard ALERTED: chasing %s"), *BestTarget->GetName());
-        SetTargetActor(BestTarget);
+        // Only pick new target if not already chasing
+        if (BestMeter >= AlertedThreshold && BestTarget)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Guard ALERTED: chasing %s"),
+                *BestTarget->GetName());
+            SetTargetActor(BestTarget);
+        }
     }
-
-    //─── Lose target if meter fully decayed ─────────────────
-    if (CurrentTarget)
+    else
     {
+        // Already chasing — only lose target if meter fully decayed
         float* CurrentMeter = DetectionMeters.Find(CurrentTarget);
         if (!CurrentMeter || *CurrentMeter <= 0.f)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Guard lost target — investigating"));
             ClearTargetActor();
+        }
+        // Don't switch to another target while chasing current one
     }
 }
 
@@ -284,21 +295,28 @@ void AVPGuardController::SetTargetActor(AActor* Target)
         BB->SetValueAsVector(BBKey_TargetLocation, Target->GetActorLocation());
         BB->SetValueAsBool(BBKey_HasLastKnownLocation, false);
 
-        // Update target location every 0.5s while chasing
+        // Update target location every 0.1s while chasing
         GetWorldTimerManager().SetTimer(TargetUpdateTimer, this,
-            &AVPGuardController::UpdateTargetLocation, 0.5f, true);
+            &AVPGuardController::UpdateTargetLocation, 0.1f, true);
     }
 }
 
 void AVPGuardController::ClearTargetActor()
 {
+    // Don't clear if target is still visible
+    if (CurrentTarget && VisibleActors.Contains(CurrentTarget))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ClearTargetActor blocked — target still visible"));
+        return;
+    }
+
     GetWorldTimerManager().ClearTimer(TargetUpdateTimer);
 
     if (UBlackboardComponent* BB = GetBlackboardComponent())
     {
         CurrentTarget = nullptr;
         BB->ClearValue(BBKey_TargetActor);
-        BB->SetValueAsBool(BBKey_HasLastKnownLocation, true); // investigate last position
+        BB->SetValueAsBool(BBKey_HasLastKnownLocation, true);
     }
 
     UE_LOG(LogTemp, Warning, TEXT("Guard lost target — investigating last position"));

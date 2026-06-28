@@ -30,6 +30,9 @@ public:
     UFUNCTION(BlueprintCallable)
     bool IsDead() const { return bIsDead; }
 
+    UFUNCTION(Server, Reliable)
+    void ServerApplyDamage(float Amount);
+
     void HandleTakeDamage(float Amount);
 
     void Revive(float ReviveHealth);
@@ -50,9 +53,6 @@ private:
 
     UFUNCTION()
     void OnRep_Health();
-
-    UFUNCTION(Server, Reliable)
-    void ServerApplyDamage(float Amount);
 
     UFUNCTION(NetMulticast, Reliable)
     void MulticastOnDeath();

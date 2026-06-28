@@ -22,6 +22,7 @@ private:
 
     float PulseTimer = 0.f;
     bool bPulsingUp = true;
+    void TryBindToGameState();
 
 protected:
     virtual void NativeConstruct() override;
@@ -29,7 +30,4 @@ protected:
 
     UFUNCTION()
     void OnAlertLevelChanged(EVPAlertLevel NewLevel);
-
-public:
-    void UpdateAlertVisual(EVPAlertLevel Level, float DeltaTime);
 };

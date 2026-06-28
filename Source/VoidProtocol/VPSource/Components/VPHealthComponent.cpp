@@ -1,4 +1,4 @@
-// VPHealthComponent.cpp
+﻿// VPHealthComponent.cpp
 #include "VPHealthComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/Character.h"
@@ -43,17 +43,23 @@ void UVPHealthComponent::Revive(float ReviveHealth)
     UE_LOG(LogTemp, Warning, TEXT("Health revived to %.0f"), Health);
 }
 
-void UVPHealthComponent::ServerApplyDamage_Implementation(float Amount)
+void UVPHealthComponent::ServerApplyDamage_Implementation(float DamageAmount)
 {
     if (bIsDead) return;
 
-    Health = FMath::Clamp(Health - Amount, 0.f, MaxHealth);
+    Health = FMath::Clamp(Health - DamageAmount, 0.f, MaxHealth);
     OnHealthChanged.Broadcast(Health);
+
+    UE_LOG(LogTemp, Warning, TEXT("Health: %.0f"), Health);
 
     if (Health <= 0.f)
     {
         bIsDead = true;
         MulticastOnDeath();
+
+        // Set downed on server — replicates to all clients via OnRep_bIsDowned
+        if (AVPCharacter* VPChar = Cast<AVPCharacter>(GetOwner()))
+            VPChar->SetDowned(true); // ← server sets it, replication handles clients
     }
 }
 
@@ -66,14 +72,7 @@ void UVPHealthComponent::MulticastOnDeath_Implementation()
 {
     bIsDead = true;
 
-    // Set downed state on the character
-    if (AVPCharacter* VPChar = Cast<AVPCharacter>(GetOwner()))
-    {
-        if (VPChar->HasAuthority())
-            VPChar->SetDowned(true);
-    }
-
-    // Disable movement only � keep input so player can look around
+    // Disable movement only — keep input so player can look around
     if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
         OwnerChar->GetCharacterMovement()->DisableMovement();
 

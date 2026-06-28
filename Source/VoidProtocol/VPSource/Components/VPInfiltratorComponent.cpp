@@ -6,6 +6,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Engine/OverlapResult.h"
 #include "VPSource/Characters/VPCharacter.h"
+#include "VPSource/Characters/VPInfiltrator.h"
 
 UVPInfiltratorComponent::UVPInfiltratorComponent()
 {
@@ -128,9 +129,11 @@ void UVPInfiltratorComponent::TryTakedown()
         AVPCharacter* VPChar = Cast<AVPCharacter>(Overlap.GetActor());
         if (VPChar && VPChar->IsDowned() && VPChar != Owner)
         {
-            UE_LOG(LogTemp, Warning, TEXT("Reviving teammate: %s"), *VPChar->GetName());
-            VPChar->ServerRevive();
-            return;
+            if (AVPInfiltrator* Infiltrator = Cast<AVPInfiltrator>(Owner))
+            {
+                Infiltrator->ServerRequestRevive(VPChar);
+                return;
+            }
         }
     }
 

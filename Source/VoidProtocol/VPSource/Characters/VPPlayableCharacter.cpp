@@ -142,6 +142,9 @@ void AVPPlayableCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
             EIC->BindAction(CrouchAction, ETriggerEvent::Started, this, &AVPPlayableCharacter::StartCrouch);
             EIC->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AVPPlayableCharacter::EndCrouch);
         }
+        // TEMP DEBUG — remove before Day 15 packaging
+        PlayerInputComponent->BindKey(EKeys::Z, IE_Pressed, this,
+            &AVPPlayableCharacter::DebugTakeDamage);
         SetupAbilityInputBindings(EIC);
     }
 }
@@ -244,4 +247,11 @@ void AVPPlayableCharacter::UpdateCoverPeek(float DeltaTime)
 
     CameraBoom->SocketOffset = FMath::VInterpTo(
         CameraBoom->SocketOffset, TargetOffset, DeltaTime, 6.f);
+}
+
+void AVPPlayableCharacter::DebugTakeDamage()
+{
+    UE_LOG(LogTemp, Warning, TEXT("DebugTakeDamage: %s"), *GetName());
+    if (HealthComponent)
+        HealthComponent->ServerApplyDamage(25.f);
 }

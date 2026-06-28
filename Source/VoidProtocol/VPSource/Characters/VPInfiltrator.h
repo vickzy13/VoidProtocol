@@ -24,4 +24,6 @@ protected:
 
 public:
     AVPInfiltrator();
+    UFUNCTION(Server, Reliable)
+    void ServerRequestRevive(AVPCharacter* PlayerToRevive);
 };
