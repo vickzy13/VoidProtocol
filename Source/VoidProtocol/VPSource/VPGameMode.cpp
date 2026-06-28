@@ -10,6 +10,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerStart.h"
 #include "VPSource/VPGameState.h"
+#include "VPSource/Components/VPHealthComponent.h"
+
+class UVPHealthComponent;
 
 AVPGameMode::AVPGameMode()
 {

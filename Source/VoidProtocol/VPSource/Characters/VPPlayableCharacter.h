@@ -68,6 +68,9 @@ private:
     UPROPERTY(EditDefaultsOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
     TSubclassOf<UUserWidget> MissionWidgetClass;
 
+    UPROPERTY(EditDefaultsOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
+    TSubclassOf<UUserWidget> DownedWidgetClass;
+
     UPROPERTY()
     UUserWidget* MissionWidget = nullptr;
 
@@ -76,6 +79,9 @@ private:
 
     UPROPERTY()
     UUserWidget* DetectionWidget = nullptr;
+
+    UPROPERTY()
+    UUserWidget* DownedWidget = nullptr;
 
     // Camera state
     bool bIsAiming = false;
@@ -109,7 +115,7 @@ protected:
     virtual void OnRep_Controller() override;
     virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
     virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
-
+    virtual void OnRep_bIsDowned() override;
     //=========================================================
     // PUBLIC — accessors + engine overrides
     //=========================================================

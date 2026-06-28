@@ -59,9 +59,13 @@ private:
     UPROPERTY(ReplicatedUsing = OnRep_bMissionFailed)
     bool bMissionFailed = false;
 
+    UPROPERTY(ReplicatedUsing = OnRep_AlertCountdown)
+    float AlertCountdown = 0.f;
+
     // Timer for alert decay and mission fail
     FTimerHandle AlertDecayTimer;
     FTimerHandle MissionFailTimer;
+    FTimerHandle CountdownTickTimer;
 
     UFUNCTION()
     void OnRep_AlertLevel();
@@ -74,6 +78,11 @@ private:
 
     UFUNCTION()
     void OnRep_bMissionFailed();
+
+    UFUNCTION()
+    void OnRep_AlertCountdown() {}
+
+    void TickAlertCountdown();
 
     void CheckMissionComplete();
 
@@ -100,6 +109,9 @@ public:
     UPROPERTY(Replicated)
     FVector LastKnownThreatLocation = FVector::ZeroVector;
 
+    UFUNCTION(BlueprintCallable, Category = "Mission")
+    float GetAlertCountdown() const { return AlertCountdown; }
+
     virtual void BeginPlay() override;
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -115,6 +127,8 @@ public:
     // Objective system
     void InitializeObjectives();
 
+    void CheckAllPlayersDowned();
+
     UFUNCTION(BlueprintCallable, Category = "Mission")
     void CompleteObjective(const FString& ObjectiveID);
 
@@ -129,4 +143,6 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Mission")
     bool IsMissionFailed() const { return bMissionFailed; }
+
+    void TriggerMissionFail();
 };

@@ -1,4 +1,3 @@
-// VPObjectiveTrigger.cpp
 #include "VPSource/Actors/VPObjectiveTrigger.h"
 #include "VPSource/VPGameState.h"
 #include "VPSource/Characters/VPCharacter.h"

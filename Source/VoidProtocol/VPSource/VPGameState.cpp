@@ -1,6 +1,8 @@
 ﻿// VPGameState.cpp
 #include "VPSource/VPGameState.h"
 #include "Net/UnrealNetwork.h"
+#include "VPSource/Characters/VPCharacter.h"
+#include "GameFramework/PlayerState.h"
 
 AVPGameState::AVPGameState()
 {
@@ -24,6 +26,7 @@ void AVPGameState::GetLifetimeReplicatedProps(
     DOREPLIFETIME(AVPGameState, bMissionComplete);
     DOREPLIFETIME(AVPGameState, bMissionFailed);
     DOREPLIFETIME(AVPGameState, LastKnownThreatLocation);
+    DOREPLIFETIME(AVPGameState, AlertCountdown);
 }
 
 //=============================================================
@@ -39,6 +42,33 @@ void AVPGameState::InitializeObjectives()
 
     UE_LOG(LogTemp, Warning, TEXT("VPGameState: %d objectives initialized"),
         Objectives.Num());
+}
+
+void AVPGameState::CheckAllPlayersDowned()
+{
+    if (!HasAuthority()) return;
+    if (bMissionComplete || bMissionFailed) return;
+
+    // Check if all players are downed
+    bool bAllDowned = true;
+    for (APlayerState* PS : PlayerArray)
+    {
+        APlayerController* PC = Cast<APlayerController>(PS->GetPlayerController());
+        if (!PC) continue;
+
+        AVPCharacter* VPChar = Cast<AVPCharacter>(PC->GetPawn());
+        if (VPChar && !VPChar->IsDowned())
+        {
+            bAllDowned = false;
+            break;
+        }
+    }
+
+    if (bAllDowned)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("All players downed — Mission Failed"));
+        TriggerMissionFail();
+    }
 }
 
 void AVPGameState::CompleteObjective(const FString& ObjectiveID)
@@ -97,39 +127,51 @@ void AVPGameState::SetAlertLevel(EVPAlertLevel NewLevel)
     if (AlertLevel == NewLevel) return;
 
     AlertLevel = NewLevel;
-    OnRep_AlertLevel();
+    OnRep_AlertLevel(); // manual call on server
 
+    // Clear all existing timers first
     GetWorldTimerManager().ClearTimer(AlertDecayTimer);
     GetWorldTimerManager().ClearTimer(MissionFailTimer);
+    GetWorldTimerManager().ClearTimer(CountdownTickTimer);
+    AlertCountdown = 0.f;
 
-    if (NewLevel == EVPAlertLevel::Suspicious)
+    UE_LOG(LogTemp, Warning, TEXT("VPGameState: Alert → %s"),
+        *UEnum::GetValueAsString(NewLevel));
+
+    switch (NewLevel)
     {
+    case EVPAlertLevel::Unaware:
+        // Nothing extra — timers already cleared above
+        break;
+
+    case EVPAlertLevel::Suspicious:
+        // Decay back to Unaware after 10s if no further detections
         GetWorldTimerManager().SetTimer(AlertDecayTimer, [this]()
             {
                 SetAlertLevel(EVPAlertLevel::Unaware);
             }, 10.f, false);
-    }
-    else if (NewLevel == EVPAlertLevel::Alerted)
-    {
-        // Mission fails if Alerted for 120 seconds
+        break;
+
+    case EVPAlertLevel::Alerted:
+        // Start countdown
+        AlertCountdown = 120.f;
+        GetWorldTimerManager().SetTimer(CountdownTickTimer, this,
+            &AVPGameState::TickAlertCountdown, 1.f, true);
+
+        // Mission fails after 120s
         GetWorldTimerManager().SetTimer(MissionFailTimer, [this]()
             {
                 if (!bMissionComplete)
-                {
-                    bMissionFailed = true;
-                    OnRep_bMissionFailed();
-                    UE_LOG(LogTemp, Warning, TEXT("MISSION FAILED — stayed alerted too long"));
-                }
+                    TriggerMissionFail();
             }, 120.f, false);
 
+        // Decay to Suspicious after 30s
         GetWorldTimerManager().SetTimer(AlertDecayTimer, [this]()
             {
                 SetAlertLevel(EVPAlertLevel::Suspicious);
             }, 30.f, false);
+        break;
     }
-
-    UE_LOG(LogTemp, Warning, TEXT("VPGameState: Alert → %s"),
-        *UEnum::GetValueAsString(NewLevel));
 }
 
 void AVPGameState::SetLastKnownThreatLocation(FVector Location)
@@ -165,4 +207,27 @@ void AVPGameState::OnRep_bMissionComplete()
 void AVPGameState::OnRep_bMissionFailed()
 {
     OnMissionFailed.Broadcast();
+}
+
+void AVPGameState::TriggerMissionFail()
+{
+    if (!HasAuthority()) return;
+    if (bMissionFailed || bMissionComplete) return;
+
+    bMissionFailed = true;
+    OnRep_bMissionFailed();
+
+    // Clear all timers
+    GetWorldTimerManager().ClearTimer(AlertDecayTimer);
+    GetWorldTimerManager().ClearTimer(MissionFailTimer);
+    GetWorldTimerManager().ClearTimer(CountdownTickTimer);
+
+    AlertCountdown = 0.f;
+
+    UE_LOG(LogTemp, Warning, TEXT("MISSION FAILED"));
+}
+
+void AVPGameState::TickAlertCountdown()
+{
+    AlertCountdown = FMath::Max(0.f, AlertCountdown - 1.f);
 }

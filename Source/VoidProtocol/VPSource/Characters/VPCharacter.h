@@ -35,6 +35,14 @@ protected:
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Stealth")
     FVector ThreatLocation = FVector::ZeroVector;
 
+    UPROPERTY(ReplicatedUsing = OnRep_bIsDowned)
+    bool bIsDowned = false;
+
+    FTimerHandle ReviveWindowTimer;
+
+    UFUNCTION()
+    virtual void OnRep_bIsDowned();
+
     UFUNCTION()
     void OnRep_Role();
 
@@ -66,6 +74,14 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Stealth")
     FVector GetThreatLocation() const { return ThreatLocation; }
+
+    UFUNCTION(BlueprintCallable, Category = "Health")
+    bool IsDowned() const { return bIsDowned; }
+
+    void SetDowned(bool bNewDowned);
+
+    UFUNCTION(Server, Reliable)
+    void ServerRevive();
 
     FORCEINLINE UVPHealthComponent* GetHealthComponent() const { return HealthComponent; }
 };

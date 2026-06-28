@@ -24,10 +24,14 @@ private:
     UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
     UInputAction* ExitCameraAction;
 
+     UFUNCTION(Server, Reliable)
+    void ServerRequestRevive(AVPCharacter* PlayerToRevive);
+
     void OnHackPressed();
     void OnHackReleased();
     void OnJumpCamera();
     void OnExitCamera();
+    bool TryRevivePartner();
 
 protected:
     virtual void SetupAbilityInputBindings(UEnhancedInputComponent* EIC) override;

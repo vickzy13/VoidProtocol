@@ -90,8 +90,8 @@ void AVPGuardController::OnPossess(APawn* InPawn)
     GetWorldTimerManager().SetTimer(DetectionTickTimer, this,
         &AVPGuardController::TickDetection, 0.1f, true);
 
-    UE_LOG(LogTemp, Warning, TEXT("VPGuardController: BT started on %s | PatrolRadius: %.0f"),
-        *InPawn->GetName(), PatrolRadius);
+   /* UE_LOG(LogTemp, Warning, TEXT("VPGuardController: BT started on %s | PatrolRadius: %.0f"),
+        *InPawn->GetName(), PatrolRadius);*/
 }
 
 void AVPGuardController::OnUnPossess()

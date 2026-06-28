@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "VPSource/Characters/VPCharacter.h"
 
 UVPHealthComponent::UVPHealthComponent()
 {
@@ -31,6 +32,17 @@ void UVPHealthComponent::HandleTakeDamage(float Amount)
         ServerApplyDamage(Amount);
 }
 
+void UVPHealthComponent::Revive(float ReviveHealth)
+{
+    if (!GetOwner()->HasAuthority()) return;
+
+    bIsDead = false;
+    Health = FMath::Clamp(ReviveHealth, 0.f, MaxHealth);
+    OnHealthChanged.Broadcast(Health);
+
+    UE_LOG(LogTemp, Warning, TEXT("Health revived to %.0f"), Health);
+}
+
 void UVPHealthComponent::ServerApplyDamage_Implementation(float Amount)
 {
     if (bIsDead) return;
@@ -54,18 +66,16 @@ void UVPHealthComponent::MulticastOnDeath_Implementation()
 {
     bIsDead = true;
 
-    // Disable movement and input on the owning character
-    if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+    // Set downed state on the character
+    if (AVPCharacter* VPChar = Cast<AVPCharacter>(GetOwner()))
     {
-        OwnerChar->GetCharacterMovement()->DisableMovement();
-        OwnerChar->GetCharacterMovement()->StopMovementImmediately();
-        OwnerChar->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-        if (APlayerController* PC = Cast<APlayerController>(OwnerChar->GetController()))
-        {
-            OwnerChar->DisableInput(PC);
-        }
+        if (VPChar->HasAuthority())
+            VPChar->SetDowned(true);
     }
+
+    // Disable movement only — keep input so player can look around
+    if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+        OwnerChar->GetCharacterMovement()->DisableMovement();
 
     OnDeath.Broadcast();
 }

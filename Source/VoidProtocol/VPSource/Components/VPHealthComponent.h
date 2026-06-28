@@ -32,6 +32,8 @@ public:
 
     void HandleTakeDamage(float Amount);
 
+    void Revive(float ReviveHealth);
+
 protected:
     virtual void BeginPlay() override;
     virtual void GetLifetimeReplicatedProps(

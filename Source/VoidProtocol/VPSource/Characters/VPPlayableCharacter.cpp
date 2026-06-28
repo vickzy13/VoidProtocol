@@ -1,4 +1,3 @@
-// VPPlayableCharacter.cpp
 #include "VPSource/Characters/VPPlayableCharacter.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -200,6 +199,33 @@ void AVPPlayableCharacter::OnEndCrouch(float HalfHeightAdjust, float ScaledHalfH
 {
     Super::OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
     UE_LOG(LogTemp, Warning, TEXT("%s STOPPED CROUCHING"), *GetName());
+}
+
+void AVPPlayableCharacter::OnRep_bIsDowned()
+{
+    Super::OnRep_bIsDowned();
+
+    // Only show downed widget for locally controlled player
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (!PC || !PC->IsLocalController()) return;
+
+    if (bIsDowned)
+    {
+        if (DownedWidgetClass && !DownedWidget)
+        {
+            DownedWidget = CreateWidget<UUserWidget>(PC, DownedWidgetClass);
+            if (DownedWidget)
+                DownedWidget->AddToViewport(10); // high Z-order
+        }
+    }
+    else
+    {
+        if (DownedWidget)
+        {
+            DownedWidget->RemoveFromParent();
+            DownedWidget = nullptr;
+        }
+    }
 }
 
 void AVPPlayableCharacter::UpdateCoverPeek(float DeltaTime)

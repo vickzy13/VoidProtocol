@@ -1,5 +1,5 @@
-﻿#include "Net/UnrealNetwork.h"
-#include "VPSource/Characters/VPGuard.h"
+﻿#include "VPSource/Characters/VPGuard.h"
+#include "Net/UnrealNetwork.h"
 #include "VPSource/AI/VPGuardController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"

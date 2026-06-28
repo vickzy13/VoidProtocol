@@ -1,6 +1,9 @@
-#include "VPSource/Characters/VPHacker.h"
+﻿#include "VPSource/Characters/VPHacker.h"
 #include "VPSource/Components/VPHackerComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Engine/OverlapResult.h"
+#include "VPSource/Components/VPHealthComponent.h"
+#include "VPSource/VPGameMode.h"
 #include "EnhancedInputComponent.h"
 
 AVPHacker::AVPHacker()
@@ -30,9 +33,54 @@ void AVPHacker::SetupAbilityInputBindings(UEnhancedInputComponent* EIC)
 
 void AVPHacker::OnHackPressed() { HackerComponent->StartHack(); }
 void AVPHacker::OnHackReleased() { HackerComponent->StopHack(); }
-void AVPHacker::OnJumpCamera() 
+void AVPHacker::OnJumpCamera()
 {
     UE_LOG(LogTemp, Warning, TEXT("OnJumpCamera pressed"));
-    HackerComponent->JumpToNextNode(); 
+
+    // Revive takes priority
+    if (TryRevivePartner()) return;
+
+    // No downed partner — jump camera
+    HackerComponent->JumpToNextNode();
 }
 void AVPHacker::OnExitCamera() { HackerComponent->ExitCamera(); }
+
+bool AVPHacker::TryRevivePartner()
+{
+    FVector Start = GetActorLocation();
+    TArray<FOverlapResult> Overlaps;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(200.f);
+    FCollisionObjectQueryParams ObjectParams;
+    ObjectParams.AddObjectTypesToQuery(ECC_Pawn);
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    GetWorld()->OverlapMultiByObjectType(Overlaps, Start,
+        FQuat::Identity, ObjectParams, Sphere, Params);
+
+    for (auto& Overlap : Overlaps)
+    {
+        AVPCharacter* VPChar = Cast<AVPCharacter>(Overlap.GetActor());
+        if (VPChar && VPChar->IsDowned())
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Requesting revive for: %s"), *VPChar->GetName());
+            ServerRequestRevive(VPChar); // ← RPC to server
+            return true;
+        }
+    }
+    // After the overlap loop, before return false:
+    UE_LOG(LogTemp, Warning, TEXT("TryRevivePartner: No downed player in range — are you close enough?"));
+    return false;
+}
+
+void AVPHacker::ServerRequestRevive_Implementation(AVPCharacter* PlayerToRevive)
+{
+    if (!PlayerToRevive || !PlayerToRevive->IsDowned()) return;
+
+    PlayerToRevive->SetDowned(false);
+
+    if (UVPHealthComponent* HC = PlayerToRevive->GetHealthComponent())
+        HC->Revive(50.f);
+
+    UE_LOG(LogTemp, Warning, TEXT("Hacker revived: %s"), *PlayerToRevive->GetName());
+}

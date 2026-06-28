@@ -5,6 +5,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/OverlapResult.h"
+#include "VPSource/Characters/VPCharacter.h"
 
 UVPInfiltratorComponent::UVPInfiltratorComponent()
 {
@@ -80,19 +81,19 @@ void UVPInfiltratorComponent::ScanForTakedown()
         const float HalfAngle = TakedownAngle * 0.5f;
         const float Threshold = -FMath::Cos(FMath::DegreesToRadians(HalfAngle));
 
-        UE_LOG(LogTemp, Warning,
+       /* UE_LOG(LogTemp, Warning,
             TEXT("Guard=%s Dot=%f Threshold=%f"),
             *Guard->GetName(),
             Dot,
-            Threshold);
+            Threshold);*/
 
         if (Dot <= Threshold)
         {
             TakedownTarget = Guard;
 
-            UE_LOG(LogTemp, Warning,
+            /*UE_LOG(LogTemp, Warning,
                 TEXT("Takedown target: %s"),
-                *Guard->GetName());
+                *Guard->GetName());*/
 
             break;
         }
@@ -107,7 +108,33 @@ void UVPInfiltratorComponent::TryTakedown()
         return;
     }
 
-    // Scan immediately before checking target
+    APawn* Owner = Cast<APawn>(GetOwner());
+    if (!Owner) return;
+
+    // Check for downed teammate first — revive takes priority over takedown
+    FVector Start = Owner->GetActorLocation();
+    TArray<FOverlapResult> Overlaps;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(200.f);
+    FCollisionObjectQueryParams ObjectParams;
+    ObjectParams.AddObjectTypesToQuery(ECC_Pawn);
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(Owner);
+
+    GetWorld()->OverlapMultiByObjectType(Overlaps, Start,
+        FQuat::Identity, ObjectParams, Sphere, Params);
+
+    for (auto& Overlap : Overlaps)
+    {
+        AVPCharacter* VPChar = Cast<AVPCharacter>(Overlap.GetActor());
+        if (VPChar && VPChar->IsDowned() && VPChar != Owner)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Reviving teammate: %s"), *VPChar->GetName());
+            VPChar->ServerRevive();
+            return;
+        }
+    }
+
+    // No downed teammate nearby — try guard takedown
     ScanForTakedown();
 
     if (!TakedownTarget)
@@ -118,7 +145,6 @@ void UVPInfiltratorComponent::TryTakedown()
 
     UE_LOG(LogTemp, Warning, TEXT("TryTakedown: Taking down %s"),
         *TakedownTarget->GetName());
-
     ServerTakedown(TakedownTarget);
 }
 
