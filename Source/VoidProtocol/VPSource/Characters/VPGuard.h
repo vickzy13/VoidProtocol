@@ -36,6 +36,9 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Patrol")
     float PatrolAcceptanceRadius = 50.f;
 
+    UPROPERTY(EditAnywhere, Category = "Animation")
+    UAnimMontage* KnockoutMontage;
+
     //=========================================================
     // PUBLIC — overrides + patrol interface
     //=========================================================
@@ -62,4 +65,7 @@ public:
 
     UPROPERTY(BlueprintReadOnly, Category = "Animation")
     FVector AnimGroundVelocity = FVector::Zero();
+
+    UPROPERTY(EditAnywhere, Category = "AI|Patrol")
+    float PatrolRadius = 1500.f;
 };

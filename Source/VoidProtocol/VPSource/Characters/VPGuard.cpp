@@ -43,9 +43,8 @@ AActor* AVPGuard::GetNextPatrolPoint()
 void AVPGuard::SetUnconscious(bool bUnconscious)
 {
     if (!HasAuthority()) return;
-
     bIsUnconscious = bUnconscious;
-    OnRep_IsUnconscious();
+    OnRep_IsUnconscious(); // handles collision + animation
 
     if (bUnconscious)
     {
@@ -53,12 +52,10 @@ void AVPGuard::SetUnconscious(bool bUnconscious)
         if (AVPGuardController* GC = Cast<AVPGuardController>(GetController()))
         {
             GC->StopMovement();
-
-            // Clear detection state
             GC->ClearAllDetection();
         }
 
-        GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        // Don't touch collision here — OnRep handles it
         GetCharacterMovement()->DisableMovement();
 
         GetWorldTimerManager().SetTimer(RecoverTimer, [this]()
@@ -68,7 +65,7 @@ void AVPGuard::SetUnconscious(bool bUnconscious)
     }
     else
     {
-        GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        // Recovery — OnRep handles collision restore
         GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 
         if (AVPGuardController* GC = Cast<AVPGuardController>(GetController()))
@@ -80,12 +77,28 @@ void AVPGuard::OnRep_IsUnconscious()
 {
     if (bIsUnconscious)
     {
-        GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        // Fix rotation before playing knockout
+        // Ensure guard mesh is correctly oriented
+        FRotator CurrentRot = GetActorRotation();
+        SetActorRotation(FRotator(0.f, CurrentRot.Yaw, 0.f)); // zero out pitch/roll
+
+        if (KnockoutMontage)
+        {
+            UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+            if (AnimInstance)
+                AnimInstance->Montage_Play(KnockoutMontage, 1.0f);
+        }
+
+        GetCapsuleComponent()->SetCollisionResponseToChannel(
+            ECC_Pawn, ECR_Ignore);
+        GetCapsuleComponent()->SetGenerateOverlapEvents(true);
         GetCharacterMovement()->DisableMovement();
     }
     else
     {
-        GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        GetCapsuleComponent()->SetCollisionEnabled(
+            ECollisionEnabled::QueryAndPhysics);
+        GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Block);
         GetCharacterMovement()->SetMovementMode(MOVE_Walking);
     }
 }

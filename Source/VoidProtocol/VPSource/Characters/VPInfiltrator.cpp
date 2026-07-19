@@ -24,7 +24,16 @@ void AVPInfiltrator::SetupAbilityInputBindings(UEnhancedInputComponent* EIC)
 
 void AVPInfiltrator::OnTakedownPressed()
 {
-    UE_LOG(LogTemp, Warning, TEXT("Takedown pressed"));
+    if (!InfiltratorComponent) return;
+
+    // Play takedown montage on Infiltrator
+    if (TakedownMontage)
+    {
+        UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+        if (AnimInstance)
+            AnimInstance->Montage_Play(TakedownMontage, 1.0f);
+    }
+
     InfiltratorComponent->TryTakedown();
 }
 

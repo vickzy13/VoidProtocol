@@ -33,7 +33,7 @@ private:
     //=========================================================
 protected:
     UPROPERTY(EditDefaultsOnly, Category = "Takedown")
-    float TakedownRange = 150.f;
+    float TakedownRange = 400.f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Takedown")
     float TakedownAngle = 180.f; // degrees behind player
@@ -41,6 +41,8 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Takedown")
     float CarryOffset = 100.f; // distance in front of player
 
+    UPROPERTY(EditDefaultsOnly, Category = "Animation")
+    UAnimMontage* TakedownMontage;
     //=========================================================
     // PUBLIC
     //=========================================================
@@ -73,4 +75,6 @@ public:
     void MulticastTakedownFX(AVPGuard* Guard);
     UFUNCTION(Server, Reliable)
     void ServerHideBody(AActor* HidingSpot);
+    UFUNCTION(Server, Reliable)
+    void ServerDropBody();
 };

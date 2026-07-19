@@ -22,6 +22,9 @@ private:
 protected:
     virtual void SetupAbilityInputBindings(UEnhancedInputComponent* EIC) override;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Animation")
+    UAnimMontage* TakedownMontage;
+
 public:
     AVPInfiltrator();
     UFUNCTION(Server, Reliable)

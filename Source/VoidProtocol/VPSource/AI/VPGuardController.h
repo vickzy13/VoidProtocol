@@ -63,7 +63,7 @@ protected:
     UBehaviorTree* GuardBehaviorTree;
 
     // Random patrol radius around spawn point
-    UPROPERTY(EditDefaultsOnly, Category="AI|Patrol")
+    UPROPERTY(EditAnywhere, Category="AI|Patrol")
     float PatrolRadius = 1500.f;
 
     // Guard's spawn location — used as center of patrol area

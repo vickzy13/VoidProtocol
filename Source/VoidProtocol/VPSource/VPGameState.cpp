@@ -154,7 +154,7 @@ void AVPGameState::SetAlertLevel(EVPAlertLevel NewLevel)
 
     case EVPAlertLevel::Alerted:
         // Start countdown
-        AlertCountdown = 120.f;
+        AlertCountdown = 30.f;
         GetWorldTimerManager().SetTimer(CountdownTickTimer, this,
             &AVPGameState::TickAlertCountdown, 1.f, true);
 

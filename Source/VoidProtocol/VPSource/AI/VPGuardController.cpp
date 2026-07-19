@@ -71,6 +71,10 @@ void AVPGuardController::OnPossess(APawn* InPawn)
     // AI only runs on server
     if (GetWorld()->GetNetMode() == NM_Client) return;
 
+    // Read patrol radius from the guard pawn
+    if (AVPGuard* Guard = Cast<AVPGuard>(InPawn))
+        PatrolRadius = Guard->PatrolRadius;
+
     if (!GuardBehaviorTree)
     {
         UE_LOG(LogTemp, Error, TEXT("VPGuardController: No BehaviorTree assigned on %s!"),
@@ -118,7 +122,7 @@ void AVPGuardController::PickNextPatrolPoint()
     bool bFound = NavSys->GetRandomReachablePointInRadius(
         SpawnLocation,
         PatrolRadius,
-        RandomPoint);
+        RandomPoint);   
 
     if (bFound)
     {

@@ -1,4 +1,4 @@
-#include "VPSource/Components/VPInfiltratorComponent.h"
+﻿#include "VPSource/Components/VPInfiltratorComponent.h"
 #include "VPSource/Characters/VPGuard.h"
 #include "VPSource/AI/VPGuardController.h"
 #include "Net/UnrealNetwork.h"
@@ -112,7 +112,7 @@ void UVPInfiltratorComponent::TryTakedown()
     APawn* Owner = Cast<APawn>(GetOwner());
     if (!Owner) return;
 
-    // Check for downed teammate first � revive takes priority over takedown
+    // Check for downed teammate first — revive takes priority over takedown
     FVector Start = Owner->GetActorLocation();
     TArray<FOverlapResult> Overlaps;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(200.f);
@@ -137,7 +137,7 @@ void UVPInfiltratorComponent::TryTakedown()
         }
     }
 
-    // No downed teammate nearby � try guard takedown
+    // No downed teammate nearby — try guard takedown
     ScanForTakedown();
 
     if (!TakedownTarget)
@@ -168,27 +168,45 @@ void UVPInfiltratorComponent::ServerTakedown_Implementation(AVPGuard* Guard)
 void UVPInfiltratorComponent::MulticastTakedownFX_Implementation(AVPGuard* Guard)
 {
     if (!Guard) return;
-
     APawn* Owner = Cast<APawn>(GetOwner());
     if (!Owner) return;
 
-    // Attach guard to infiltrator
-    FAttachmentTransformRules Rules(EAttachmentRule::SnapToTarget, true);
-    Guard->AttachToActor(Owner, Rules);
+    // Play takedown animation
+    if (ACharacter* InfiltratorChar = Cast<ACharacter>(Owner))
+    {
+        if (TakedownMontage)
+        {
+            UAnimInstance* AnimInstance =
+                InfiltratorChar->GetMesh()->GetAnimInstance();
+            if (AnimInstance)
+                AnimInstance->Montage_Play(TakedownMontage, 1.0f);
+        }
+    }
 
-    // Offset guard in front of player
-    Guard->SetActorRelativeLocation(FVector(CarryOffset, 0.f, -50.f));
-    Guard->SetActorRelativeRotation(FRotator::ZeroRotator);
+    // Don't attach — just disable guard movement and mark as carried
+    // Guard will be moved in TickComponent to follow Infiltrator
+    Guard->GetCharacterMovement()->DisableMovement();
 
     bIsCarrying = true;
     CarriedGuard = Guard;
 
-    UE_LOG(LogTemp, Warning, TEXT("MulticastTakedownFX: Carrying %s"), *Guard->GetName());
+    UE_LOG(LogTemp, Warning, TEXT("Takedown complete — carrying %s"),
+        *Guard->GetName());
 }
 
 void UVPInfiltratorComponent::DropBody()
 {
-    if (!bIsCarrying || !CarriedGuard) return;
+    if (!bIsCarrying) return;
+
+    if (!CarriedGuard)
+    {
+        // CarriedGuard is null but bIsCarrying is true — reset state
+        UE_LOG(LogTemp, Error, TEXT("DropBody: CarriedGuard is null, resetting carry state"));
+        bIsCarrying = false;
+        return;
+    }
+
+    ServerDropBody();
 }
 
 void UVPInfiltratorComponent::ServerHideBody_Implementation(AActor* HidingSpot)
@@ -228,4 +246,32 @@ void UVPInfiltratorComponent::ServerHideBody_Implementation(AActor* HidingSpot)
     CarriedGuard = nullptr;
 
     UE_LOG(LogTemp, Warning, TEXT("ServerHideBody complete"));
+}
+
+void UVPInfiltratorComponent::ServerDropBody_Implementation()
+{
+    if (!CarriedGuard) return;
+
+    // Store local ref before clearing — prevents null reference
+    AVPGuard* GuardToDrop = CarriedGuard;
+
+    // Detach from infiltrator
+    FDetachmentTransformRules Rules(EDetachmentRule::KeepWorld, true);
+    GuardToDrop->DetachFromActor(Rules);
+
+    // Place body in front of player
+    if (GetOwner())
+    {
+        FVector DropLocation = GetOwner()->GetActorLocation() +
+            GetOwner()->GetActorForwardVector() * 100.f;
+        GuardToDrop->SetActorLocation(DropLocation);
+    }
+
+    // Guard stays unconscious — just no longer carried
+    // bIsUnconscious remains true, recovery timer still running
+
+    bIsCarrying = false;
+    CarriedGuard = nullptr;
+
+    UE_LOG(LogTemp, Warning, TEXT("Body dropped at player's feet"));
 }
