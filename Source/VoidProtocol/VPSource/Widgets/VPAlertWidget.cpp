@@ -33,7 +33,7 @@ void UVPAlertWidget::TryBindToGameState()
     }
     else
     {
-        // GameState not ready yet — retry after 0.5s
+        // GameState not ready yet - retry after 0.5s
         FTimerHandle RetryHandle;
         GetWorld()->GetTimerManager().SetTimer(RetryHandle, [this]()
             {
@@ -95,7 +95,7 @@ void UVPAlertWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
     {
         float Countdown = GS->GetAlertCountdown();
         AlertText->SetText(FText::FromString(
-            FString::Printf(TEXT("!! ALERTED — EXTRACT IN %.0fs"), Countdown)));
+            FString::Printf(TEXT("!! ALERTED - EXTRACT IN %ds"), FMath::RoundToInt(Countdown))));
     }
 
     // Pulse effect
